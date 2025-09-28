@@ -1,5 +1,5 @@
 # Technical Plan: "SB29-guard-chrome"
-This document outlines the technical implementation details, feature set, and rollout strategy for the SB29 Guard Chrome Extension. For a high-level overview of the project's mission and goals, please see the main (README.md)[../README.md].
+This document outlines the technical implementation details, feature set, and rollout strategy for the SB29 Guard Chrome Extension. For a high-level overview of the project's mission and goals, please see the main [README.md](../README.md).
 
 ## 🛣️ Phased Rollout Plan
 We will develop this project in two distinct phases to prioritize a fast, secure initial deployment followed by a more robust, long-term architecture.
