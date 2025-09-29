@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "SB29 Guard",
+  "version": "1.0.0",
+  "description": "Checks the DPA status of the current website against district records.",
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms"
+  ],
+
+  "host_permissions": [
+    "__API_HOST_PLACEHOLDER__"
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "images/icon-neutral16.png",
+      "48": "images/icon-neutral48.png"
+    },
+    "default_title": "SB29 DPA Checker"
+  },
+
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "icons": {
+    "16": "images/icon-neutral16.png",
+    "48": "images/icon-neutral48.png",
+    "128": "images/icon-neutral128.png"
+  }
+}
+
