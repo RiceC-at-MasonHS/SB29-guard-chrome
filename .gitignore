@@ -1,3 +1,10 @@
 # ignore the environment variables, leave a template
 .env
 !.env.example
+
+# secrets in JS are a bit different
+config.js
+!example_config.js
+
+# all the local build output
+/build
