@@ -31,9 +31,9 @@ Our first launch-ready version must do the following:
 
   - **Green Circle:** Approved
 
-  - **Yellow Triangle:** Status pending, at any level
+  - **Yellow Triangle:** Teaching and Learning approved, not for student accounts
 
-  - **Orange Square:** Teaching and Learning approved, not for student accounts
+  - **Orange Square:** Status pending, at any level 
 
   - **Red 'X':** Denied for all use
 
