@@ -27,7 +27,7 @@ Our first launch-ready version must do the following:
 
 - **Background URL Monitoring:** The `background.js` script must successfully listen for tab updates and extract the hostname from the current URL.
 
-- **Dynamic Icon:** The extension's icon in the toolbar must change color and shape based on the site's status to support accessibility. We will need to create and include these image assets.
+- **Dynamic Icon:** The extension's icon in the toolbar must change color and shape based on the site's status to support accessibility. We will need to create and include these image assets. Go see the [icon-strategy.yaml](icon-strategy.yaml) for full details: it is the authoratative source. The list below is a summary.
 
   - **Green Circle:** Approved
 
