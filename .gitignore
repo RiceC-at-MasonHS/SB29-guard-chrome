@@ -8,3 +8,6 @@ config.js
 
 # all the local build output
 /build
+
+# example json output
+resp.json
