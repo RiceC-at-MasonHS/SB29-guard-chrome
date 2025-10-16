@@ -49,6 +49,25 @@
         .button:hover {
             background-color: #0056b3;
         }
+        #disclaimer {
+            font-size: 0.7rem; /* Increased size slightly for readability */
+            color: #606060;
+            margin-top: 16px; /* Added margin for separation */
+            line-height: 1.5; /* Improved line spacing */
+            text-align: center;
+        }
+        /* Styling for all links within the disclaimer */
+        #disclaimer a,
+        #disclaimer a:visited,
+        #disclaimer a:active {
+            color: #606060; /* Match the text color */
+            text-decoration: underline;
+            transition: opacity 0.2s ease-in-out;
+        }
+        /* Styling for link hover state */
+        #disclaimer a:hover {
+            opacity: 0.7; /* Fade slightly for hover feedback */
+        }
     </style>
 </head>
 <body>
@@ -59,11 +78,13 @@
         <div class="content">
             <p id="tl-status"></p>
             <p id="dpa-status"></p>
+            <p id="is-app-text"></p>
             <!-- This link is now always visible and points to the main App Hub site -->
-            <a href="https://www.mcsapphub.com" id="details-link" class="button" target="_blank" rel="noopener noreferrer">View Full Details on MCS App Hub</a>
+            <a href="https://www.mcsapphub.com" id="details-link" class="button" target="_blank" rel="noopener noreferrer">View Details on MCS App Hub</a>
+            <!-- TODO: Add link to license and disclaimer (needs to be very short) -->
+            <p id="disclaimer"><a href="https://github.com/RiceC-at-MasonHS/SB29-guard-chrome?tab=MIT-1-ov-file">MIT License</a>. Don’t share <a href="https://csrc.nist.gov/glossary/term/PII">PII</a> or violate <a href="https://studentprivacy.ed.gov/ferpa">FERPA</a>.</p>
         </div>
     </div>
     <script src="popup.js"></script>
 </body>
 </html>
-
