@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SB29 Guard",
   "version": "1.0.0",
-  "description": "Checks the DPA status of the current website against district records.",
+  "description": "Checks the DPA status of the current website against Mason district records.",
 
   "permissions": [
     "storage",
