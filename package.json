@@ -7,9 +7,6 @@
     "test": "jest",
     "build": "node build-manifest.js"
   },
-  "jest": {
-    "testEnvironment": "jsdom"
-  },
   "devDependencies": {
     "jest": "^27.5.1",
     "jest-chrome": "^0.8.0",
