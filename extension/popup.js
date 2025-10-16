@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } else {
         // If no match is found, show the "Unlisted" status
-        statusText.textContent = 'This site is not in the district list.';
+        statusText.textContent = 'Resource not in District list.';
         tlStatus.textContent = 'Recommend for review submission.';
         dpaStatus.textContent = '';
         isAppText.textContent = ''; // Ensure this is also cleared for unlisted sites
