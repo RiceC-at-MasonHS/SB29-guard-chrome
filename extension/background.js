@@ -8,29 +8,53 @@ const CACHE_DURATION_MINUTES = 60 * 24; // Cache data for 24 hours
 // --- NEW: Robust URL Parsing Function ---
 
 /**
- * Parses a URL string and returns its root domain.
- * Handles subdomains (e.g., "app.site.com" -> "site.com") and invalid URLs gracefully.
+ * Parses a URL string and returns domain information, including app store detection.
+ * Handles subdomains and invalid URLs gracefully.
  * @param {string | null | undefined} urlString The URL to parse.
- * @returns {string|null} The root domain or null if the URL is invalid.
+ * @returns {object | null} An object containing domain information or null if the URL is invalid.
+ *  {
+ *   fullHostname: string, //with subdomain
+ *   hostname: string,       //root domain
+ *   isInstalled: string | null // app-id or null
+ *  }
  */
-function getRootDomain(urlString) {
+function getDomainInfo(urlString) {
     if (!urlString || typeof urlString !== 'string') {
         return null;
     }
     try {
-        // Use the URL constructor to handle complex URLs
         const url = new URL(urlString);
         const hostnameParts = url.hostname.split('.');
 
-        // Handle cases like 'localhost' or single-name domains
-        if (hostnameParts.length <= 1) {
-            return url.hostname;
-        }
+        let appID = null;
+        let isAppStore = false;
+        try{
+            if (url.hostname === 'apps.apple.com'){
+                isAppStore = true;
+                let pathParts = url.pathname.split("/");
+                appID = pathParts[pathParts.length - 1];
+            } else if (url.hostname === 'chromewebstore.google.com'){
+                isAppStore = true;
+                let pathParts = url.pathname.split("/");
+                appID = pathParts[pathParts.length - 1];
+            } else if (url.hostname === 'play.google.com'){
+                isAppStore = true;
+                appID = url.searchParams.get("id");
+            }
+        } catch (error) {
+            console.warn(`Could not parse the path to determine app-id: ${urlString}`);
+            return null;
+        }   
 
-        // Return the last two parts for the root domain (e.g., "google.com")
-        return hostnameParts.slice(-2).join('.');
+        let domainInfo = {
+            fullHostname: url.hostname, //with subdomain
+            hostname: hostnameParts.slice(-2).join('.'),
+            isInstalled: appID !== null,
+            appID: appID,
+            isAppStore: isAppStore
+        };
+        return domainInfo;
     } catch (error) {
-        // Silently fail for invalid URL strings
         console.warn(`Could not parse invalid URL: ${urlString}`);
         return null;
     }
@@ -96,7 +120,8 @@ async function getAndUpdateDpaList() {
 function determineOverallStatus(siteInfo) {
     const tlStatus = siteInfo.current_tl_status;
     const dpaStatus = siteInfo.current_dpa_status;
-
+// ~~~~~~~~~~~~~~~~~~ This section is a major TODO item: 
+// ~~~~~~~~~~~~~~~~~~ --> How exactly do we want to mark the web-pages?
     if (tlStatus === 'Denied' || dpaStatus === 'Denied') return 'denied';
     if (tlStatus === 'Approved' && dpaStatus === 'Received') return 'approved';
     if (tlStatus === 'Approved' && (dpaStatus === 'Requested' || dpaStatus === 'In Progress')) return 'staff_only';
@@ -108,35 +133,40 @@ function determineOverallStatus(siteInfo) {
  * Updates the extension icon based on the site's status.
  * @param {string} status - The simplified status key.
  * @param {number} tabId - The ID of the tab to update.
+ * @param {boolean} isInstalled - A flag to indicate if this is an installed app
  */
-function updateIcon(status, tabId) {
+function updateIcon(status, tabId, isInstalled) {
     let iconDetails = {};
     switch (status) {
-        case 'approved':   iconDetails = { path: "images/icon-green-circle.png", color: '#008a00', text: '✓' }; break;
-        case 'denied':     iconDetails = { path: "images/icon-red-x.png", color: '#D32F2F', text: 'X' }; break;
-        case 'staff_only': iconDetails = { path: "images/icon-orange-square.png", color: '#F57C00', text: 'i' }; break;
-        case 'pending':    iconDetails = { path: "images/icon-yellow-triangle.png", color: '#FBC02D', text: '?' }; break;
-        case 'unlisted':   iconDetails = { path: "images/icon-purple-diamond.png", color: '#7B1FA2', text: '' }; break;
-        default:           iconDetails = { path: "images/icon-neutral48.png", color: '#808080', text: '' }; break;
+// ~~~~~~~~~~~~~~~~~~ This section is a major TODO item: 
+// ~~~~~~~~~~~~~~~~~~ --> How exactly do we want to mark the web-pages?
+        case 'approved':   iconDetails = { path: "images/icon-green-circle.png"}; break;
+        case 'denied':     iconDetails = { path: "images/icon-red-x.png"}; break;
+        case 'staff_only': iconDetails = { path: "images/icon-orange-square.png"}; break;
+        case 'pending':    iconDetails = { path: "images/icon-yellow-triangle.png"}; break;
+        case 'unlisted':   iconDetails = { path: "images/icon-purple-diamond.png"}; break;
+        default:           iconDetails = { path: "images/icon-neutral48.png"}; break;
     }
     chrome.action.setIcon({ path: { "48": iconDetails.path }, tabId: tabId });
-    // chrome.action.setBadgeText({ text: iconDetails.text, tabId: tabId });
-    // chrome.action.setBadgeBackgroundColor({ color: iconDetails.color, tabId: tabId });
+
+    if (isInstalled){
+        chrome.action.setBadgeText({ text: '⇲', tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: '#ebebeb', tabId: tabId });
+    } else {
+        chrome.action.setBadgeText({ text: '', tabId: tabId }); // Clear badge
+    }
 }
 
 /**
  * Main handler for tab updates.
- * @param {number} tabId - The ID of the updated tab.
- * @param {object} changeInfo - Object describing the change.
- * @param {chrome.tabs.Tab} tab - The state of the tab that was updated.
  */
 async function handleTabUpdate(tabId, changeInfo, tab) {
     if (changeInfo.status !== 'complete' || !tab.url || !tab.url.startsWith('http')) {
         return;
     }
 
-    const tabRootDomain = getRootDomain(tab.url);
-    if (!tabRootDomain) { // If the current tab's URL is invalid for some reason
+    const tabDomainInfo = getDomainInfo(tab.url);
+    if (!tabDomainInfo) { // If the current tab's URL is invalid for some reason
         updateIcon('neutral', tabId);
         return;
     }
@@ -148,19 +178,29 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
         return;
     }
     
-    // Find the site by matching the root domain of the 'resource_link' field.
-    const siteInfo = dpaList.find(site => {
-        const siteRootDomain = getRootDomain(site.resource_link);
-        return siteRootDomain && siteRootDomain === tabRootDomain;
+    let siteInfo = null;
+
+    //Prioritize app-ID matches for installed items
+    if (tabDomainInfo.isInstalled){
+        siteInfo = dpaList.find(site => {
+        const siteDomainInfo = getDomainInfo(site.resource_link);
+            return siteDomainInfo && siteDomainInfo.appID === tabDomainInfo.appID;
     });
+    } else {
+    // Find the site by matching the root domain of the 'resource_link' field.
+        siteInfo = dpaList.find(site => {
+            const siteDomainInfo = getDomainInfo(site.resource_link);
+            return siteDomainInfo && siteDomainInfo.hostname === tabDomainInfo.hostname;
+        });
+    }
 
     if (siteInfo) {
         const overallStatus = determineOverallStatus(siteInfo);
-        console.log(`Site found: ${tabRootDomain}, Status: ${overallStatus}`);
-        updateIcon(overallStatus, tabId);
+        console.log(`Site found: ${tabDomainInfo.hostname}, Status: ${overallStatus}`);
+        updateIcon(overallStatus, tabId, tabDomainInfo.isInstalled);
     } else {
-        console.log(`Site not found in DPA list: ${tabRootDomain}`);
-        updateIcon('unlisted', tabId);
+        console.log(`Site not found in DPA list: ${tabDomainInfo.hostname}`);
+        updateIcon('unlisted', tabId, tabDomainInfo.isInstalled);
     }
 }
 
@@ -170,10 +210,13 @@ chrome.tabs.onUpdated.addListener(handleTabUpdate);
 chrome.runtime.onStartup.addListener(getAndUpdateDpaList);
 chrome.runtime.onInstalled.addListener(getAndUpdateDpaList);
 chrome.alarms.create('refreshDpaList', { delayInMinutes: 1, periodInMinutes: CACHE_DURATION_MINUTES });
-chrome.alarms.onAlarm.addListener(alarm => {
+
+// Refactor the alarm listener to use a named function
+function handleAlarm(alarm) {
     if (alarm.name === 'refreshDpaList') {
         console.log('Periodic alarm triggered. Refreshing DPA list.');
         getAndUpdateDpaList();
     }
-});
+}
 
+chrome.alarms.onAlarm.addListener(handleAlarm);
