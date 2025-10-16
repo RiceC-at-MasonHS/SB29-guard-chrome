@@ -39,11 +39,15 @@ Our first launch-ready version must do the following:
 
   - **Purple Diamond:** Unlisted - recommend for review submission
 
+  - **Installed App badge:** Items that can be installed from app stores should be given 
+
 - **Informative Popup:** Clicking the icon opens a `popup.html` that provides a clear summary and a direct link to the official details.
 
   - **At-a-glance status:** Briefly display the key statuses (e.g., "T&L: Approved", "DPA: Requested").
 
-  - **Primary Call to Action:** A prominent link to "View Full Details on MCS App Hub". This will link directly to the specific page for that resource, ensuring teachers always see the most current, official information without us needing to replicate complex UI.
+  - **Primary Call to Action:** A prominent link to "Full Details on MCS App Hub". This will link directly to the specific page for that resource, ensuring teachers always see the most current, official information without us needing to replicate complex UI.
+
+  - **Footnote License Disclaimer:** A de-emphasized text (likely light gray and smaller text) at the bottom of the popup should identify that this extension is covered by an MIT License, and link to the license on GitHub. In a few short words (keeping all of this in a single line of text) it should advocate users know their applicable rules and that this Chrome Extension is a shortcut memory aide, not full legal coverage. 
 
 - **Local Caching & Refresh:** The API data must be stored in `chrome.storage.local` and refreshed periodically (e.g., daily).
 
