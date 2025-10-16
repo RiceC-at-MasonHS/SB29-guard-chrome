@@ -12,11 +12,11 @@ const CACHE_DURATION_MINUTES = 60 * 24; // Cache data for 24 hours
  * Handles subdomains and invalid URLs gracefully.
  * @param {string | null | undefined} urlString The URL to parse.
  * @returns {object | null} An object containing domain information or null if the URL is invalid.
- *  {
- *   fullHostname: string, //with subdomain
- *   hostname: string,       //root domain
- *   isInstalled: string | null // app-id or null
- *  }
+ * {
+ * fullHostname: string, //with subdomain
+ * hostname: string,      //root domain
+ * isInstalled: string | null // app-id or null
+ * }
  */
 function getDomainInfo(urlString) {
     if (!urlString || typeof urlString !== 'string') {
@@ -113,41 +113,80 @@ async function getAndUpdateDpaList() {
 // --- Extension Logic ---
 
 /**
- * Determines a single, overall status from the detailed site information.
+ * Determines a single, overall status based on the logic in icon_status_logic.yaml.
  * @param {object} siteInfo - The data object for a specific site from the API.
- * @returns {string} The simplified status key (e.g., 'approved', 'denied', 'staff_only').
+ * @returns {string} The simplified status key (e.g., 'approved', 'denied', 'default').
  */
 function determineOverallStatus(siteInfo) {
-    const tlStatus = siteInfo.current_tl_status;
-    const dpaStatus = siteInfo.current_dpa_status;
-// ~~~~~~~~~~~~~~~~~~ This section is a major TODO item: 
-// ~~~~~~~~~~~~~~~~~~ --> How exactly do we want to mark the web-pages?
-    if (tlStatus === 'Denied' || dpaStatus === 'Denied') return 'denied';
-    if (tlStatus === 'Approved' && dpaStatus === 'Received') return 'approved';
-    if (tlStatus === 'Approved' && (dpaStatus === 'Requested' || dpaStatus === 'In Progress')) return 'staff_only';
-    if (dpaStatus === 'Requested' || dpaStatus === 'In Progress') return 'pending';
-    return 'pending';
+    // Normalize blank, null, or undefined statuses to a consistent '(blank)' string for easier matching.
+    const tlStatus = siteInfo.current_tl_status || '(blank)';
+    const dpaStatus = siteInfo.current_dpa_status || '(blank)';
+
+    // The order of these checks is important and follows the logic in icon_status_logic.yaml.
+
+    // 'denied': TL is 'Rejected'
+    if (tlStatus === 'Rejected') {
+        return 'denied';
+    }
+
+    // 'staff_only': DPA is 'Denied'
+    if (dpaStatus === 'Denied') {
+        return 'staff_only';
+    }
+
+    // 'approved': Combinations of 'Approved'/'Not Required' for TL and 'Received'/'Not Required' for DPA
+    if ((tlStatus === 'Approved' || tlStatus === 'Not Required') &&
+        (dpaStatus === 'Received' || dpaStatus === 'Not Required')) { // Note: Treats "Recieved" in YAML as "Received"
+        return 'approved';
+    }
+    
+    // 'pending': Covers several combinations including 'Pending', 'Requested', or blank statuses.
+    if ((tlStatus === 'Approved' || tlStatus === 'Not Required') &&
+        (dpaStatus === 'Requested' || dpaStatus === '(blank)')) {
+        return 'pending';
+    }
+    if (tlStatus === 'Pending' || tlStatus === '(blank)') {
+        return 'pending';
+    }
+
+    // 'default': A fallback for any combinations not explicitly covered above.
+    return 'default';
 }
 
 /**
- * Updates the extension icon based on the site's status.
+ * Updates the extension icon based on the site's status, aligned with icon_status_logic.yaml.
  * @param {string} status - The simplified status key.
  * @param {number} tabId - The ID of the tab to update.
- * @param {boolean} isInstalled - A flag to indicate if this is an installed app
+ * @param {boolean} isInstalled - A flag to indicate if this is an installed app.
  */
 function updateIcon(status, tabId, isInstalled) {
-    let iconDetails = {};
+    let iconPaths = {};
     switch (status) {
-// ~~~~~~~~~~~~~~~~~~ This section is a major TODO item: 
-// ~~~~~~~~~~~~~~~~~~ --> How exactly do we want to mark the web-pages?
-        case 'approved':   iconDetails = { path: "images/icon-green-circle.png"}; break;
-        case 'denied':     iconDetails = { path: "images/icon-red-x.png"}; break;
-        case 'staff_only': iconDetails = { path: "images/icon-orange-square.png"}; break;
-        case 'pending':    iconDetails = { path: "images/icon-yellow-triangle.png"}; break;
-        case 'unlisted':   iconDetails = { path: "images/icon-purple-diamond.png"}; break;
-        default:           iconDetails = { path: "images/icon-neutral48.png"}; break;
+        case 'approved':
+            iconPaths = { "48": "images/icon-green-circle.png" };
+            break;
+        case 'denied':
+            iconPaths = { "48": "images/icon-red-x.png" };
+            break;
+        case 'staff_only':
+            iconPaths = { "48": "images/icon-yellow-triangle.png" };
+            break;
+        case 'pending':
+            iconPaths = { "48": "images/icon-orange-square.png" };
+            break;
+        case 'unlisted':
+            iconPaths = { "48": "images/icon-purple-diamond.png" };
+            break;
+        case 'default':
+        default: // This handles both 'default' and any unexpected status.
+            iconPaths = {
+                "16": "images/icon-neutral16.png",
+                "48": "images/icon-neutral48.png",
+                "128": "images/icon-neutral128.png"
+            };
+            break;
     }
-    chrome.action.setIcon({ path: { "48": iconDetails.path }, tabId: tabId });
+    chrome.action.setIcon({ path: iconPaths, tabId: tabId });
 
     if (isInstalled){
         chrome.action.setBadgeText({ text: '⇲', tabId: tabId });
@@ -167,14 +206,14 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 
     const tabDomainInfo = getDomainInfo(tab.url);
     if (!tabDomainInfo) { // If the current tab's URL is invalid for some reason
-        updateIcon('neutral', tabId);
+        updateIcon('default', tabId, false);
         return;
     }
 
     const dpaList = await getAndUpdateDpaList();
     if (!dpaList) {
         console.log('No DPA list available to check against.');
-        updateIcon('neutral', tabId);
+        updateIcon('default', tabId, tabDomainInfo.isInstalled);
         return;
     }
     
@@ -220,3 +259,42 @@ function handleAlarm(alarm) {
 }
 
 chrome.alarms.onAlarm.addListener(handleAlarm);
+
+// --- Message Listener for Popup ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "getSiteInfoForUrl") {
+        // This is an async wrapper to allow using await inside the listener
+        (async () => {
+            const domainInfo = getDomainInfo(request.url);
+            if (!domainInfo) {
+                sendResponse({ error: 'Invalid URL.' });
+                return;
+            }
+
+            const { dpaList } = await chrome.storage.local.get('dpaList');
+            if (!dpaList) {
+                sendResponse({ error: 'DPA data not yet loaded.' });
+                return;
+            }
+
+            let siteInfo = null;
+            if (domainInfo.isInstalled){
+                siteInfo = dpaList.find(site => {
+                    const siteDomainInfo = getDomainInfo(site.resource_link);
+                    return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
+                });
+            } else {
+                siteInfo = dpaList.find(site => {
+                    const siteDomainInfo = getDomainInfo(site.resource_link);
+                    return siteDomainInfo && siteDomainInfo.hostname === domainInfo.hostname;
+                });
+            }
+
+            // Send the final data back to the popup
+            sendResponse({ siteInfo, domainInfo });
+        })();
+
+        return true; // Required to indicate you will send a response asynchronously
+    }
+});
+
