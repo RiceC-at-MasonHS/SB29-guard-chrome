@@ -12,11 +12,6 @@ const CACHE_DURATION_MINUTES = 60 * 24; // Cache data for 24 hours
  * Handles subdomains and invalid URLs gracefully.
  * @param {string | null | undefined} urlString The URL to parse.
  * @returns {object | null} An object containing domain information or null if the URL is invalid.
- * {
- * fullHostname: string, //with subdomain
- * hostname: string,      //root domain
- * isInstalled: string | null // app-id or null
- * }
  */
 function getDomainInfo(urlString) {
     if (!urlString || typeof urlString !== 'string') {
@@ -28,32 +23,41 @@ function getDomainInfo(urlString) {
 
         let appID = null;
         let isAppStore = false;
-        try{
-            if (url.hostname === 'apps.apple.com'){
-                isAppStore = true;
-                let pathParts = url.pathname.split("/");
-                appID = pathParts[pathParts.length - 1];
-            } else if (url.hostname === 'chromewebstore.google.com'){
-                isAppStore = true;
-                let pathParts = url.pathname.split("/");
-                appID = pathParts[pathParts.length - 1];
-            } else if (url.hostname === 'play.google.com'){
-                isAppStore = true;
-                appID = url.searchParams.get("id");
+        let appStoreName = null; // Variable to hold the specific store name
+        
+        try {
+            switch (url.hostname) {
+                case 'apps.apple.com':
+                    isAppStore = true;
+                    appStoreName = 'Apple App Store';
+                    const applePathParts = url.pathname.split("/");
+                    appID = applePathParts[applePathParts.length - 1];
+                    break;
+                case 'chromewebstore.google.com':
+                    isAppStore = true;
+                    appStoreName = 'Chrome Web Store';
+                    const chromePathParts = url.pathname.split("/");
+                    appID = chromePathParts[chromePathParts.length - 1];
+                    break;
+                case 'play.google.com':
+                    isAppStore = true;
+                    appStoreName = 'Google Play Store';
+                    appID = url.searchParams.get("id");
+                    break;
             }
         } catch (error) {
             console.warn(`Could not parse the path to determine app-id: ${urlString}`);
-            return null;
-        }   
+            // Don't return null here, as the base domain info is still valid.
+        }
 
-        let domainInfo = {
-            fullHostname: url.hostname, //with subdomain
+        return {
+            fullHostname: url.hostname,
             hostname: hostnameParts.slice(-2).join('.'),
             isInstalled: appID !== null,
             appID: appID,
-            isAppStore: isAppStore
+            isAppStore: isAppStore,
+            appStoreName: appStoreName // Return the specific store name
         };
-        return domainInfo;
     } catch (error) {
         console.warn(`Could not parse invalid URL: ${urlString}`);
         return null;
@@ -113,80 +117,50 @@ async function getAndUpdateDpaList() {
 // --- Extension Logic ---
 
 /**
- * Determines a single, overall status based on the logic in icon_status_logic.yaml.
+ * Determines a single, overall status from the detailed site information.
  * @param {object} siteInfo - The data object for a specific site from the API.
- * @returns {string} The simplified status key (e.g., 'approved', 'denied', 'default').
+ * @returns {string} The simplified status key (e.g., 'approved', 'denied', 'staff_only').
  */
 function determineOverallStatus(siteInfo) {
-    // Normalize blank, null, or undefined statuses to a consistent '(blank)' string for easier matching.
-    const tlStatus = siteInfo.current_tl_status || '(blank)';
-    const dpaStatus = siteInfo.current_dpa_status || '(blank)';
+    const { current_tl_status, current_dpa_status } = siteInfo;
 
-    // The order of these checks is important and follows the logic in icon_status_logic.yaml.
-
-    // 'denied': TL is 'Rejected'
-    if (tlStatus === 'Rejected') {
+    // Denied takes precedence
+    if (current_tl_status === 'Rejected') {
         return 'denied';
     }
-
-    // 'staff_only': DPA is 'Denied'
-    if (dpaStatus === 'Denied') {
-        return 'staff_only';
+    if (current_dpa_status === 'Denied') {
+        return 'staff_only'; // Per YAML logic
     }
 
-    // 'approved': Combinations of 'Approved'/'Not Required' for TL and 'Received'/'Not Required' for DPA
-    if ((tlStatus === 'Approved' || tlStatus === 'Not Required') &&
-        (dpaStatus === 'Received' || dpaStatus === 'Not Required')) { // Note: Treats "Recieved" in YAML as "Received"
+    // Approved statuses
+    const isApproved = (current_tl_status === 'Approved' || current_tl_status === 'Not Required');
+    const isReceived = (current_dpa_status === 'Received' || current_dpa_status === 'Not Required');
+
+    if (isApproved && isReceived) {
         return 'approved';
     }
-    
-    // 'pending': Covers several combinations including 'Pending', 'Requested', or blank statuses.
-    if ((tlStatus === 'Approved' || tlStatus === 'Not Required') &&
-        (dpaStatus === 'Requested' || dpaStatus === '(blank)')) {
-        return 'pending';
-    }
-    if (tlStatus === 'Pending' || tlStatus === '(blank)') {
-        return 'pending';
-    }
 
-    // 'default': A fallback for any combinations not explicitly covered above.
-    return 'default';
+    // All other cases are considered pending
+    return 'pending';
 }
 
 /**
- * Updates the extension icon based on the site's status, aligned with icon_status_logic.yaml.
+ * Updates the extension icon based on the site's status.
  * @param {string} status - The simplified status key.
  * @param {number} tabId - The ID of the tab to update.
- * @param {boolean} isInstalled - A flag to indicate if this is an installed app.
+ * @param {boolean} isInstalled - A flag to indicate if this is an installed app
  */
 function updateIcon(status, tabId, isInstalled) {
-    let iconPaths = {};
+    let iconPath = '';
     switch (status) {
-        case 'approved':
-            iconPaths = { "48": "images/icon-green-circle.png" };
-            break;
-        case 'denied':
-            iconPaths = { "48": "images/icon-red-x.png" };
-            break;
-        case 'staff_only':
-            iconPaths = { "48": "images/icon-yellow-triangle.png" };
-            break;
-        case 'pending':
-            iconPaths = { "48": "images/icon-orange-square.png" };
-            break;
-        case 'unlisted':
-            iconPaths = { "48": "images/icon-purple-diamond.png" };
-            break;
-        case 'default':
-        default: // This handles both 'default' and any unexpected status.
-            iconPaths = {
-                "16": "images/icon-neutral16.png",
-                "48": "images/icon-neutral48.png",
-                "128": "images/icon-neutral128.png"
-            };
-            break;
+        case 'approved':   iconPath = "images/icon-green-circle.png"; break;
+        case 'denied':     iconPath = "images/icon-red-x.png"; break;
+        case 'staff_only': iconPath = "images/icon-yellow-triangle.png"; break;
+        case 'pending':    iconPath = "images/icon-orange-square.png"; break;
+        case 'unlisted':   iconPath = "images/icon-purple-diamond.png"; break;
+        default:           iconPath = "images/icon-neutral48.png"; break;
     }
-    chrome.action.setIcon({ path: iconPaths, tabId: tabId });
+    chrome.action.setIcon({ path: { "48": iconPath }, tabId: tabId });
 
     if (isInstalled){
         chrome.action.setBadgeText({ text: '⇲', tabId: tabId });
@@ -206,27 +180,25 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 
     const tabDomainInfo = getDomainInfo(tab.url);
     if (!tabDomainInfo) { // If the current tab's URL is invalid for some reason
-        updateIcon('default', tabId, false);
+        updateIcon('neutral', tabId, false);
         return;
     }
 
     const dpaList = await getAndUpdateDpaList();
     if (!dpaList) {
         console.log('No DPA list available to check against.');
-        updateIcon('default', tabId, tabDomainInfo.isInstalled);
+        updateIcon('neutral', tabId, tabDomainInfo.isInstalled);
         return;
     }
     
     let siteInfo = null;
-
-    //Prioritize app-ID matches for installed items
+    // Find the site by matching the root domain or app ID.
     if (tabDomainInfo.isInstalled){
         siteInfo = dpaList.find(site => {
-        const siteDomainInfo = getDomainInfo(site.resource_link);
+            const siteDomainInfo = getDomainInfo(site.resource_link);
             return siteDomainInfo && siteDomainInfo.appID === tabDomainInfo.appID;
-    });
+        });
     } else {
-    // Find the site by matching the root domain of the 'resource_link' field.
         siteInfo = dpaList.find(site => {
             const siteDomainInfo = getDomainInfo(site.resource_link);
             return siteDomainInfo && siteDomainInfo.hostname === tabDomainInfo.hostname;
@@ -250,14 +222,12 @@ chrome.runtime.onStartup.addListener(getAndUpdateDpaList);
 chrome.runtime.onInstalled.addListener(getAndUpdateDpaList);
 chrome.alarms.create('refreshDpaList', { delayInMinutes: 1, periodInMinutes: CACHE_DURATION_MINUTES });
 
-// Refactor the alarm listener to use a named function
 function handleAlarm(alarm) {
     if (alarm.name === 'refreshDpaList') {
         console.log('Periodic alarm triggered. Refreshing DPA list.');
         getAndUpdateDpaList();
     }
 }
-
 chrome.alarms.onAlarm.addListener(handleAlarm);
 
 // --- Message Listener for Popup ---
