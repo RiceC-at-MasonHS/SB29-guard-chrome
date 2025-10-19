@@ -3,6 +3,7 @@
 const API_URL = '__API_URI_PLACEHOLDER__';
 // This placeholder will be replaced by your build script
 const API_KEY = '__API_KEY_PLACEHOLDER__';
+const USER_AGENT = '__USER_AGENT_PLACEHOLDER__';
 const CACHE_DURATION_MINUTES = 60 * 24; // Cache data for 24 hours
 
 /**
@@ -72,7 +73,7 @@ function getDomainInfo(urlString) {
 async function fetchDpaData() {
     const headers = new Headers({
         'apikey': API_KEY,
-        'User-Agent': '__USER_AGENT_PLACEHOLDER__'
+        'User-Agent': USER_AGENT
     });
 
     try {
