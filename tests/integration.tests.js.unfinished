@@ -1,0 +1,78 @@
+// Import the functions we want to test or mock from the background script
+const { handleTabUpdate, getAndUpdateDpaList } = require('../extension/background.js');
+// Import the jest-chrome mock
+const { chrome } = require('jest-chrome');
+
+// --- CRITICAL FIX: Use jest.mock ---
+// This tells Jest to find the module at the given path and automatically
+// replace all its exports with mock functions. We specify that we want to
+// keep the original implementation for handleTabUpdate, but use a mock for
+// getAndUpdateDpaList.
+jest.mock('../extension/background.js', () => ({
+  ...jest.requireActual('../extension/background.js'), // Keep original implementations for other functions
+  getAndUpdateDpaList: jest.fn(), // Replace this specific function with a mock
+}));
+
+// --- Mock Data ---
+const mockDpaList = [
+    { software_name: 'Google', resource_link: 'https://google.com', current_tl_status: 'Approved', current_dpa_status: 'Received' },
+    { software_name: 'Example Denied', resource_link: 'https://example.com', current_tl_status: 'Rejected', current_dpa_status: 'Denied' },
+];
+
+describe('handleTabUpdate integration tests', () => {
+
+    beforeEach(() => {
+        // Reset our mock function's history before each test
+        getAndUpdateDpaList.mockReset();
+
+        // Explicitly mock the chrome.action API for each test
+        chrome.action = {
+            setIcon: jest.fn(),
+            setBadgeText: jest.fn(),
+            setBadgeBackgroundColor: jest.fn(),
+        };
+    });
+
+    test('should set "approved" icon for a listed and approved site', async () => {
+        // Arrange: Configure our mock to return the DPA list for this specific test
+        getAndUpdateDpaList.mockResolvedValue(mockDpaList);
+        const tab = { id: 1, url: 'https://www.google.com' };
+
+        // Act: Run the real handleTabUpdate, which will now call our mock getAndUpdateDpaList
+        await handleTabUpdate(tab.id, { status: 'complete' }, tab);
+
+        // Assert: Verify that the icon was set correctly
+        expect(chrome.action.setIcon).toHaveBeenCalledWith({
+            path: { "48": "images/icon-green-circle.png" },
+            tabId: tab.id
+        });
+    });
+
+    test('should set "unlisted" icon for a site not in the DPA list', async () => {
+        // Arrange
+        getAndUpdateDpaList.mockResolvedValue(mockDpaList);
+        const tab = { id: 2, url: 'https://www.new-website.com' };
+
+        // Act
+        await handleTabUpdate(tab.id, { status: 'complete' }, tab);
+
+        // Assert
+        expect(chrome.action.setIcon).toHaveBeenCalledWith({
+            path: { "48": "images/icon-purple-diamond.png" },
+            tabId: tab.id
+        });
+    });
+
+    test('should not update icon if tab status is not "complete"', async () => {
+        // Arrange
+        const tab = { id: 3, url: 'https://www.google.com' };
+
+        // Act
+        await handleTabUpdate(tab.id, { status: 'loading' }, tab);
+
+        // Assert: The DPA list function should not have even been called
+        expect(getAndUpdateDpaList).not.toHaveBeenCalled();
+        expect(chrome.action.setIcon).not.toHaveBeenCalled();
+    });
+});
+
