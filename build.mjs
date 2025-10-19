@@ -59,11 +59,16 @@ async function build() {
     const manifestHostPattern = `${API_HOST}/*`;
     manifestContent = manifestContent.replace(/__API_HOST_PLACEHOLDER__/g, manifestHostPattern);
     
+    // --- Write the processed manifest to the build directory ---
     fs.writeFileSync(path.join(buildDir, 'manifest.json'), manifestContent);
 
     // 4. Copy all other files and replace placeholders where needed
     console.log('   - Processing and copying source files...');
     const allFiles = fs.readdirSync(sourceDir, { withFileTypes: true });
+    
+    // --- Create the dynamic User-Agent string ---
+    const userAgentString = `${packageJson.displayName.replace(/\s+/g, '-')}-Chrome-Extension/${packageJson.version}`;
+    console.log('   - Generating User-Agent:', userAgentString);
 
     for (const file of allFiles) {
         const sourcePath = path.join(sourceDir, file.name);
@@ -82,6 +87,7 @@ async function build() {
             let content = fs.readFileSync(sourcePath, 'utf8');
             content = content.replace(/__API_KEY_PLACEHOLDER__/g, API_KEY);
             content = content.replace(/__API_URI_PLACEHOLDER__/g, API_URI);
+            content = content.replace(/__USER_AGENT_PLACEHOLDER__/g, userAgentString);
             fs.writeFileSync(destPath, content);
         } else {
             fs.copyFileSync(sourcePath, destPath);
