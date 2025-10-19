@@ -198,8 +198,8 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
         });
     }
 
-    console.log(`Site found: ${tabDomainInfo.hostname}, Status: ${overallStatus}`);
     const overallStatus = determineOverallStatus(siteInfo);
+    console.log(`Site found: ${tabDomainInfo.hostname}, Status: ${overallStatus}`);
     updateIcon(overallStatus, tabId, tabDomainInfo.isInstalled);
 }
 
