@@ -5,8 +5,6 @@ const API_URL = '__API_URI_PLACEHOLDER__';
 const API_KEY = '__API_KEY_PLACEHOLDER__';
 const CACHE_DURATION_MINUTES = 60 * 24; // Cache data for 24 hours
 
-// --- NEW: Robust URL Parsing Function ---
-
 /**
  * Parses a URL string and returns domain information, including app store detection.
  * Handles subdomains and invalid URLs gracefully.
@@ -30,13 +28,13 @@ function getDomainInfo(urlString) {
                 case 'apps.apple.com':
                     isAppStore = true;
                     appStoreName = 'Apple App Store';
-                    const applePathParts = url.pathname.split("/");
+                    const applePathParts = url.pathname.split("/"); // does not include query params (ex: for language-codes)
                     appID = applePathParts[applePathParts.length - 1];
                     break;
                 case 'chromewebstore.google.com':
                     isAppStore = true;
                     appStoreName = 'Chrome Web Store';
-                    const chromePathParts = url.pathname.split("/");
+                    const chromePathParts = url.pathname.split("/"); // does not include query params (ex: for language-codes)
                     appID = chromePathParts[chromePathParts.length - 1];
                     break;
                 case 'play.google.com':
@@ -47,16 +45,16 @@ function getDomainInfo(urlString) {
             }
         } catch (error) {
             console.warn(`Could not parse the path to determine app-id: ${urlString}`);
-            // Don't return null here, as the base domain info is still valid.
+            // Do not return null here, continue with domain info
         }
 
         return {
             fullHostname: url.hostname,
-            hostname: hostnameParts.slice(-2).join('.'),
-            isInstalled: appID !== null,
+            hostname: hostnameParts.length <= 1 ? url.hostname : hostnameParts.slice(-2).join('.'),
+            isInstalled: isAppStore,
             appID: appID,
             isAppStore: isAppStore,
-            appStoreName: appStoreName // Return the specific store name
+            appStoreName: appStoreName
         };
     } catch (error) {
         console.warn(`Could not parse invalid URL: ${urlString}`);
@@ -74,7 +72,7 @@ function getDomainInfo(urlString) {
 async function fetchDpaData() {
     const headers = new Headers({
         'apikey': API_KEY,
-        'User-Agent': 'SB29-Guard-Chrome-Extension/1.0.0'
+        'User-Agent': '__USER_AGENT_PLACEHOLDER__'
     });
 
     try {
@@ -122,25 +120,19 @@ async function getAndUpdateDpaList() {
  * @returns {string} The simplified status key (e.g., 'approved', 'denied', 'staff_only').
  */
 function determineOverallStatus(siteInfo) {
-    const { current_tl_status, current_dpa_status } = siteInfo;
+    if (!siteInfo) return 'unlisted';
 
-    // Denied takes precedence
-    if (current_tl_status === 'Rejected') {
-        return 'denied';
-    }
-    if (current_dpa_status === 'Denied') {
-        return 'staff_only'; // Per YAML logic
-    }
+    const tlStatus = siteInfo.current_tl_status;
+    const dpaStatus = siteInfo.current_dpa_status;
 
-    // Approved statuses
-    const isApproved = (current_tl_status === 'Approved' || current_tl_status === 'Not Required');
-    const isReceived = (current_dpa_status === 'Received' || current_dpa_status === 'Not Required');
+    if (tlStatus === 'Rejected') return 'denied';
+    if (dpaStatus === 'Denied') return 'staff_only';
 
-    if (isApproved && isReceived) {
-        return 'approved';
-    }
+    const isApproved = (tlStatus === 'Approved' || tlStatus === 'Not Required');
+    const dpaComplete = (dpaStatus === 'Received' || dpaStatus === 'Not Required');
 
-    // All other cases are considered pending
+    if (isApproved && dpaComplete) return 'approved';
+
     return 'pending';
 }
 
@@ -151,22 +143,22 @@ function determineOverallStatus(siteInfo) {
  * @param {boolean} isInstalled - A flag to indicate if this is an installed app
  */
 function updateIcon(status, tabId, isInstalled) {
-    let iconPath = '';
+    let iconDetails = {};
     switch (status) {
-        case 'approved':   iconPath = "images/icon-green-circle.png"; break;
-        case 'denied':     iconPath = "images/icon-red-x.png"; break;
-        case 'staff_only': iconPath = "images/icon-yellow-triangle.png"; break;
-        case 'pending':    iconPath = "images/icon-orange-square.png"; break;
-        case 'unlisted':   iconPath = "images/icon-purple-diamond.png"; break;
-        default:           iconPath = "images/icon-neutral48.png"; break;
+        case 'approved':   iconDetails = { path: "images/icon-green-circle.png"}; break;
+        case 'denied':     iconDetails = { path: "images/icon-red-x.png"}; break;
+        case 'staff_only': iconDetails = { path: "images/icon-yellow-triangle.png"}; break;
+        case 'pending':    iconDetails = { path: "images/icon-orange-square.png"}; break;
+        case 'unlisted':   iconDetails = { path: "images/icon-purple-diamond.png"}; break;
+        default:           iconDetails = { path: "images/icon-neutral48.png"}; break;
     }
-    chrome.action.setIcon({ path: { "48": iconPath }, tabId: tabId });
+    chrome.action.setIcon({ path: { "48": iconDetails.path }, tabId: tabId });
 
     if (isInstalled){
         chrome.action.setBadgeText({ text: '⇲', tabId: tabId });
         chrome.action.setBadgeBackgroundColor({ color: '#ebebeb', tabId: tabId });
     } else {
-        chrome.action.setBadgeText({ text: '', tabId: tabId }); // Clear badge
+        chrome.action.setBadgeText({ text: '', tabId: tabId });
     }
 }
 
@@ -186,7 +178,7 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 
     const dpaList = await getAndUpdateDpaList();
     if (!dpaList) {
-        console.log('No DPA list available to check against.');
+        console.warn('No DPA list available to check against.');
         updateIcon('neutral', tabId, tabDomainInfo.isInstalled);
         return;
     }
@@ -205,66 +197,82 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
         });
     }
 
-    if (siteInfo) {
-        const overallStatus = determineOverallStatus(siteInfo);
-        console.log(`Site found: ${tabDomainInfo.hostname}, Status: ${overallStatus}`);
-        updateIcon(overallStatus, tabId, tabDomainInfo.isInstalled);
-    } else {
-        console.log(`Site not found in DPA list: ${tabDomainInfo.hostname}`);
-        updateIcon('unlisted', tabId, tabDomainInfo.isInstalled);
-    }
+    console.log(`Site found: ${tabDomainInfo.hostname}, Status: ${overallStatus}`);
+    const overallStatus = determineOverallStatus(siteInfo);
+    updateIcon(overallStatus, tabId, tabDomainInfo.isInstalled);
 }
 
-
-// --- Event Listeners ---
-chrome.tabs.onUpdated.addListener(handleTabUpdate);
-chrome.runtime.onStartup.addListener(getAndUpdateDpaList);
-chrome.runtime.onInstalled.addListener(getAndUpdateDpaList);
-chrome.alarms.create('refreshDpaList', { delayInMinutes: 1, periodInMinutes: CACHE_DURATION_MINUTES });
-
+/**
+ * Handles the periodic alarm to refresh the DPA list.
+ * @param {object} alarm - The alarm object from the Chrome API.
+ */
 function handleAlarm(alarm) {
     if (alarm.name === 'refreshDpaList') {
         console.log('Periodic alarm triggered. Refreshing DPA list.');
         getAndUpdateDpaList();
     }
 }
-chrome.alarms.onAlarm.addListener(handleAlarm);
 
-// --- Message Listener for Popup ---
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "getSiteInfoForUrl") {
-        // This is an async wrapper to allow using await inside the listener
-        (async () => {
-            const domainInfo = getDomainInfo(request.url);
-            if (!domainInfo) {
-                sendResponse({ error: 'Invalid URL.' });
-                return;
-            }
 
-            const { dpaList } = await chrome.storage.local.get('dpaList');
-            if (!dpaList) {
-                sendResponse({ error: 'DPA data not yet loaded.' });
-                return;
-            }
+// ======================================================================== //
+// CRITICAL JEST FIX: WRAP ALL CHROME API LISTENERS IN A CONDITIONAL BLOCK  //
+// ======================================================================== //
+// This ensures the code below only runs in the extension environment,
+// and is completely ignored when Jest tries to import this file for testing.
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+    
+    // --- Event Listeners ---
+    chrome.tabs.onUpdated.addListener(handleTabUpdate);
+    chrome.runtime.onStartup.addListener(getAndUpdateDpaList);
+    chrome.runtime.onInstalled.addListener(getAndUpdateDpaList);
+    chrome.alarms.create('refreshDpaList', { delayInMinutes: 1, periodInMinutes: CACHE_DURATION_MINUTES });    
+    chrome.alarms.onAlarm.addListener(handleAlarm);
 
-            let siteInfo = null;
-            if (domainInfo.isInstalled){
-                siteInfo = dpaList.find(site => {
-                    const siteDomainInfo = getDomainInfo(site.resource_link);
-                    return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
-                });
-            } else {
-                siteInfo = dpaList.find(site => {
-                    const siteDomainInfo = getDomainInfo(site.resource_link);
-                    return siteDomainInfo && siteDomainInfo.hostname === domainInfo.hostname;
-                });
-            }
+    // --- Message Listener for Popup ---
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === "getSiteInfoForUrl") {
+            (async () => {
+                const domainInfo = getDomainInfo(request.url);
+                if (!domainInfo) {
+                    sendResponse({ error: 'Invalid URL.' });
+                    return;
+                }
 
-            // Send the final data back to the popup
-            sendResponse({ siteInfo, domainInfo });
-        })();
+                const dpaList = await getAndUpdateDpaList();
+                if (!dpaList) {
+                    sendResponse({ error: 'DPA data not yet loaded.' });
+                    return;
+                }
 
-        return true; // Required to indicate you will send a response asynchronously
-    }
-});
+                let siteInfo = null;
+                if (domainInfo.isInstalled){
+                    siteInfo = dpaList.find(site => {
+                        const siteDomainInfo = getDomainInfo(site.resource_link);
+                        return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
+                    });
+                } else {
+                    siteInfo = dpaList.find(site => {
+                        const siteDomainInfo = getDomainInfo(site.resource_link);
+                        return siteDomainInfo && siteDomainInfo.hostname === domainInfo.hostname;
+                    });
+                }
+                sendResponse({ siteInfo, domainInfo });
+            })();
+            return true;
+        }
+    });
+}
 
+// --- Testability Exports ---
+// This allows Jest to import your functions for testing, but does NOT run
+// in the browser extension environment.
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        getDomainInfo,
+        determineOverallStatus,
+        handleTabUpdate,
+        fetchDpaData,
+        getAndUpdateDpaList,
+        updateIcon
+    };
+}
