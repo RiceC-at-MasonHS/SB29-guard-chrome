@@ -1,5 +1,5 @@
 # Project: "SB29-guard-chrome" - DPA Status Checker Chrome Extension
-![screen recording of SB29-guard-chrome working](docs/Recording_2025-10-20_213354.gif)
+![screen recording of SB29-guard-chrome working](docs/Recording_2025-10-20_213354.png)
 
 ## Mission: The "Why"
 Our goal is to build a simple, privacy-first tool that empowers teachers to make safe choices about digital resources. In an instant, they should know if a website they are visiting respects student data privacy according to our district's standards (Ohio SB29).
