@@ -7,14 +7,14 @@ We will develop this project in two distinct phases to prioritize a fast, secure
 ### Version 1.0: Initial Private Release
 For the initial rollout within our district's managed Google Workspace, we will use a direct-to-API architecture.
 
-- **How it Works:** The extension will fetch data directly from the Supabase API. The required API key will be included in the packaged extension code.
+- **How it Works:** The extension will fetch data directly from the Supabase API. The required API key will be included in the packaged extension code. Ideally this is a dedicated, read-only API Key that does not allow users to muddle with the data. 
 
-- **API Key Security:** To keep the key out of the public GitHub repository, it will be handled via a build-time injection. The key will be stored in a local, git-ignored file (e.g., `config.js`). A simple build script will read this key and insert it into the final JavaScript file before the extension is packaged for upload. This is a safe and acceptable tradeoff for a private, force-installed extension.
+- **API Key Security:** To keep the key out of the public GitHub repository, it will be handled via a build-time injection. The key will be stored in a local, git-ignored file (e.g., `config.js`). A simple build script will read this key and insert it into the final JavaScript file before the extension is packaged for upload. This is a safe and acceptable tradeoff for a private, force-installed extension. Doubly so if the API Key is guarded to be read-only. 
 
-### Version 2.0: Enhanced Security & Scalability
+### Version 2.0: Enhanced Security & Scalability -- Optional Advancement
 For long-term stability and security, we will introduce a secure proxy model.
 
-- **How it Works:** The extension will call a trusted intermediary endpoint hosted by the school. This proxy will be the only service that holds the Supabase API key.
+- **How it Works:** The extension will call a trusted intermediary endpoint hosted by the school. This proxy will be the only service that holds the Supabase API key. It will also be able to minimize the data that is transmitted to end-users devices. 
 
 - **Technology:** The proxy will be a lightweight, high-performance binary (written in Go) hosted on a school subdomain. This completely decouples the extension from the secret key, making the system more robust and scalable.
 
@@ -44,6 +44,8 @@ Our first launch-ready version must do the following:
 - **Informative Popup:** Clicking the icon opens a `popup.html` that provides a clear summary and a direct link to the official details.
 
   - **At-a-glance status:** Briefly display the key statuses (e.g., "T&L: Approved", "DPA: Requested").
+
+  - **Plain Language Explanation:** A simple to understand explanation to accompany the objective status messages. 
 
   - **Primary Call to Action:** A prominent link to "Full Details on MCS App Hub". This will link directly to the specific page for that resource, ensuring teachers always see the most current, official information without us needing to replicate complex UI.
 
