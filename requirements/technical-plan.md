@@ -74,5 +74,22 @@ Our first launch-ready version must do the following:
 Version 1.0 is "done" when a teacher can navigate to a website, see the extension icon change correctly, and click it for details that link back to the official App Hub. The extension must pass the Chrome Web Store review for a private extension, with a clear privacy policy hosted on our GitHub Pages site.
 
 ---------
-## Possible Future Extensions
-In some future forked version (for another school) this may be built with a published Google Sheet as the source of truth for the extension. If that is the case, it would probably be best to recommend a Google Sheet structure, and have a configuration option so users can enter in the URL of their school's specific Google Sheet. [read more about 'options' pages](https://developer.chrome.com/docs/extensions/develop/ui/options-page) If that is the case, then there should also be built-from-data summary pages to display 'more info' about a given resource than the popup can hold. Since any school using a Google Sheet as their source of truth won't have something like [mcsapphub.com](mcsapphub.com) to host those pages for them, the extension should also have registered in it's manifest a full-page that can display more complete information about a particular app if the users are so interested (it will be more readable than a spreadsheet). Finally: blocking websites from the Chrome Extension is an option that *could be* implemented, but that feels like it would need to be considered carefully, and likely decided by whoever controls the Google Sheet.
+## 💡 Future Extensions & Considerations
+
+For future iterations, particularly when adapting this extension for other schools, consider the following enhancements:
+
+- **Google Sheets as Data Source:**
+  - **Concept:** Allow schools to use a published Google Sheet as the source of truth for the extension's data. This eliminates the need for a proxy service (Version 2.0) because published Google Sheets are inherently secure and read-only.
+  - **Implementation:**
+    - Require school administrators to adhere to a predefined column structure in their Google Sheet.
+    - Implement an [options page](https://developer.chrome.com/docs/extensions/develop/ui/options-page) where users can input the URL of their school's Google Sheet.
+- **Enhanced Information Display:**
+  - **Concept:**  Provide more detailed information about each resource than can fit in the popup.
+  - **Implementation:**
+    - Create dynamically generated summary pages based on the data from the chosen source (Supabase or Google Sheets).
+    - Register a [full-page extension](https://developer.chrome.com/docs/extensions/develop/ui/content-scripts) in the manifest to display this detailed information. This is especially useful when using Google Sheets as the data source, as it provides a more readable format than a spreadsheet.
+- **Website Blocking (Optional):**
+  - **Concept:**  Potentially implement the ability to block websites directly from the Chrome Extension.
+  - **Considerations:**
+    - This feature requires careful consideration and should be governed by whoever controls the data source (e.g., the administrator managing the Google Sheet).
+    -  Ensure that blocking is implemented responsibly and with appropriate user consent and transparency.
