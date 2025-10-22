@@ -93,3 +93,5 @@ For future iterations, particularly when adapting this extension for other schoo
   - **Considerations:**
     - This feature requires careful consideration and should be governed by whoever controls the data source (e.g., the administrator managing the Google Sheet).
     -  Ensure that blocking is implemented responsibly and with appropriate user consent and transparency.
+- **Unlisted Site Check:**
+  - **Concept:** Some sites unlisted by a school district do not need to be recommended for submission/review, if they do not have user accounts or track user data. Scan page contents to determine 'Recommend for review submission.' status, instead of blindly recommending all unlisted sites. 
