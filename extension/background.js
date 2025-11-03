@@ -73,8 +73,9 @@ function getDomainInfo(urlString) {
  */
 async function fetchDpaData() {
     const headers = new Headers({
+        'accept-profile': 'public',
         'apikey': API_KEY,
-        'User-Agent': 'SB29-Guard-Chrome-Extension/1.0.0'
+        'User-Agent': 'SB29-Guard-Chrome-Extension'
     });
 
     try {
