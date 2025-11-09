@@ -30,29 +30,61 @@ function getDomainInfo(urlString) {
                 case 'apps.apple.com':
                     isAppStore = true;
                     appStoreName = 'Apple App Store';
-                    const applePathParts = url.pathname.split("/");
-                    appID = applePathParts[applePathParts.length - 1];
+                    if (url.pathname.includes('/app/')) {
+                        const applePathParts = url.pathname.split("/");
+                        appID = applePathParts[applePathParts.length - 1];
+                    }
                     break;
                 case 'chromewebstore.google.com':
                     isAppStore = true;
                     appStoreName = 'Chrome Web Store';
                     const chromePathParts = url.pathname.split("/");
-                    appID = chromePathParts[chromePathParts.length - 1];
+                    if (chromePathParts.length > 1 && chromePathParts[1] === 'detail') {
+                        appID = chromePathParts[chromePathParts.length - 1];
+                    }
                     break;
                 case 'play.google.com':
                     isAppStore = true;
                     appStoreName = 'Google Play Store';
-                    appID = url.searchParams.get("id");
+                    if (url.pathname.startsWith('/store/apps/details')) {
+                        appID = url.searchParams.get("id");
+                    }
+                    break;
+                case 'workspace.google.com':
+                    isAppStore = true;
+                    appStoreName = 'Google Workspace Marketplace';
+                    const workspacePathParts = url.pathname.split("/");
+                    if (workspacePathParts.length > 2 && workspacePathParts[1] === 'marketplace' && workspacePathParts[2] === 'app') {
+                        const potentialAppID = workspacePathParts[workspacePathParts.length - 1];
+                        if (/^\d+$/.test(potentialAppID)) {
+                            appID = potentialAppID;
+                        }
+                    }
                     break;
             }
         } catch (error) {
             console.warn(`Could not parse the path to determine app-id: ${urlString}`);
+            console.warn(error)
             // Don't return null here, as the base domain info is still valid.
+        }
+
+        let hostnameForMatching;
+        if (isAppStore) {
+            // Use full hostname for app stores
+            hostnameForMatching = url.hostname; 
+        } else {
+            // otherwise use primary domain only
+            if (hostnameParts.length > 1) {
+                hostnameForMatching = hostnameParts.slice(-2).join('.');
+            } else {
+                // or handle TOP-LEVEL-DOMAIN only.... rare
+                hostnameForMatching = url.hostname;
+            }
         }
 
         return {
             fullHostname: url.hostname,
-            hostname: hostnameParts.slice(-2).join('.'),
+            hostname: hostnameForMatching, // This is what's used for matching
             isInstalled: appID !== null,
             appID: appID,
             isAppStore: isAppStore,
@@ -60,6 +92,7 @@ function getDomainInfo(urlString) {
         };
     } catch (error) {
         console.warn(`Could not parse invalid URL: ${urlString}`);
+        console.warn(error);
         return null;
     }
 }
@@ -193,16 +226,16 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
     }
     
     let siteInfo = null;
-    // Find the site by matching the root domain or app ID.
+    // Find the site by matching the app ID or hostname.
     if (tabDomainInfo.isInstalled){
         siteInfo = dpaList.find(site => {
             const siteDomainInfo = getDomainInfo(site.resource_link);
-            return siteDomainInfo && siteDomainInfo.appID === tabDomainInfo.appID;
+            return siteDomainInfo && siteDomainInfo.isInstalled && siteDomainInfo.appID === tabDomainInfo.appID;
         });
-    } else {
+    } else if (!tabDomainInfo.isAppStore) { // Only match hostname if it's NOT a generic app store page
         siteInfo = dpaList.find(site => {
             const siteDomainInfo = getDomainInfo(site.resource_link);
-            return siteDomainInfo && siteDomainInfo.hostname === tabDomainInfo.hostname;
+            return siteDomainInfo && !siteDomainInfo.isInstalled && siteDomainInfo.hostname === tabDomainInfo.hostname;
         });
     }
 
@@ -252,12 +285,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (domainInfo.isInstalled){
                 siteInfo = dpaList.find(site => {
                     const siteDomainInfo = getDomainInfo(site.resource_link);
-                    return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
+                    return siteDomainInfo && siteDomainInfo.isInstalled && siteDomainInfo.appID === domainInfo.appID;
                 });
-            } else {
+            } else if (!domainInfo.isAppStore) {
                 siteInfo = dpaList.find(site => {
                     const siteDomainInfo = getDomainInfo(site.resource_link);
-                    return siteDomainInfo && siteDomainInfo.hostname === domainInfo.hostname;
+                    return siteDomainInfo && !siteDomainInfo.isInstalled && siteDomainInfo.hostname === domainInfo.hostname;
                 });
             }
 
@@ -268,4 +301,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Required to indicate you will send a response asynchronously
     }
 });
-

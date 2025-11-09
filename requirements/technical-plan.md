@@ -53,6 +53,11 @@ Our first launch-ready version must do the following:
 
 - **Local Caching & Refresh:** The API data must be stored in `chrome.storage.local` and refreshed periodically (e.g., daily).
 
+- **Domain & App Store Matching Logic:** The extension must intelligently distinguish between standard websites, app store pages, and specific applications within those stores.
+  - **Standard Websites:** For most websites, matching will be based on the root domain. The extension will simplify hostnames (e.g., `www.example.com` becomes `example.com`) to provide broad coverage without requiring every subdomain to be listed in the DPA list.
+  - **App Stores:** Known app store domains (e.g., `play.google.com`, `apps.apple.com`, etc.) will be handled as special cases. When a user is on a generic app store page (like a homepage or search results), the extension will match against the full, specific subdomain (e.g., `play.google.com`) instead of the root domain. This prevents, for example, the Google Play Store from incorrectly displaying the DPA status for `google.com`.
+  - **Applications:** When a user is viewing a specific application page within an app store, the extension will identify the application's unique ID from the URL path or query parameters and use that for matching. This ensures that individual apps have their own distinct DPA status.
+
 ## 💻 Tech Stack & Repo Structure
 - **Extension Code (V1):** Vanilla JavaScript, HTML, CSS.
 
