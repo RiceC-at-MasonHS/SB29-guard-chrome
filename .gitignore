@@ -16,3 +16,7 @@ manifest.json
 
 # Jest cache
 .jest-cache
+
+# image alternates
+*.png.big
+*.png.bak

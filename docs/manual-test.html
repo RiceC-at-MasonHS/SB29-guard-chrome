@@ -201,4 +201,194 @@
         </ul>
     </div>
 </body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SB29 Guard - Extension Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.5rem;
+            margin-top: 2rem;
+        }
+        h1 {
+            text-align: center;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        li {
+            background-color: #fdfdfd;
+            border: 1px solid #eee;
+            padding: 1rem 1.5rem;
+            margin-bottom: 0.75rem;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: box-shadow 0.2s ease-in-out;
+        }
+        li:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .expectation {
+            /* font-style: italic; */
+            color: #555;
+            background-color: #e9ecef;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.9em;
+            text-align: center;
+            min-width: 120px;
+        }
+        .instructions {
+            background-color: #fffbe6;
+            border: 1px solid #ffe58f;
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Extension Behavior Test Page</h1>
+
+        <div class="instructions">
+            <p>Use this page to verify that the SB29 Guard extension is working correctly. Click on each link below, which will open in a new tab. Check that the extension icon in your browser toolbar changes to match the "Expected Icon" described.</p>
+            <p>The data used to make this list was accurate as of October 1st, 2025 and data/status may have changed in the primary database since then for any 'pending' items.</p>
+        </div>
+
+        <h2>Known District Resources (Simulated)</h2>
+        <p>These links simulate sites that are in the district's DPA list. The extension should recognize their root domain and display the appropriate status.</p>
+        <ul>
+            <!-- Existing -->
+            <li>
+                <a href="https://www.khanacademy.org/" target="_blank" rel="noopener noreferrer">Khan Academy</a>
+                <span class="expectation">✅ Approved</span>
+            </li>
+            <!-- New -->
+             <li>
+                <a href="https://www.desmos.com/" target="_blank" rel="noopener noreferrer">Desmos</a>
+                <span class="expectation">✅ Approved</span>
+            </li>
+            <li>
+                <a href="https://docs.google.com/" target="_blank" rel="noopener noreferrer">Google Docs (Subdomain Test)</a>
+                <span class="expectation">✅ Approved</span>
+            </li>
+            <!-- Existing -->
+            <li>
+                <a href="https://www.getepic.com/" target="_blank" rel="noopener noreferrer">Epic!</a>
+                <span class="expectation">⚠️ Pending</span>
+            </li>
+            <!-- New -->
+            <li>
+                <a href="https://padlet.com/" target="_blank" rel="noopener noreferrer">Padlet</a>
+                <span class="expectation">⚠️ Pending</span>
+            </li>
+            <!-- Existing -->
+             <li>
+                <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer">TikTok</a>
+                <span class="expectation">❌ Denied</span>
+            </li>
+            <!-- New -->
+            <li>
+                <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram</a>
+                <span class="expectation">❌ Denied</span>
+            </li>
+             <!-- Existing -->
+            <li>
+                <a href="https://www.remind.com/" target="_blank" rel="noopener noreferrer">Remind</a>
+                <span class="expectation">🧑‍🏫 Staff Only</span>
+            </li>
+            <!-- New -->
+            <li>
+                <a href="https://www.powerschool.com/" target="_blank" rel="noopener noreferrer">PowerSchool</a>
+                <span class="expectation">🧑‍🏫 Staff Only</span>
+            </li>
+        </ul>
+
+        <h2>App Store Pages</h2>
+        <p>These links go directly to app store pages. The extension should identify them as "installed" apps and show the badge, in addition to their DPA status.</p>
+        <ul>
+            <!-- Existing -->
+            <li>
+                <a href="https://apps.apple.com/us/app/google-classroom/id924620788" target="_blank" rel="noopener noreferrer">Google Classroom (Apple)</a>
+                <span class="expectation">✅ Approved + Badge</span>
+            </li>
+            <!-- New -->
+             <li>
+                <a href="https://apps.apple.com/us/app/microsoft-teams/id1113153706" target="_blank" rel="noopener noreferrer">Microsoft Teams (Apple)</a>
+                <span class="expectation">✅ Approved + Badge</span>
+            </li>
+            <!-- Existing -->
+            <li>
+                <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.classroom" target="_blank" rel="noopener noreferrer">Google Classroom (Google Play)</a>
+                 <span class="expectation">✅ Approved + Badge</span>
+            </li>
+             <!-- New -->
+            <li>
+                <a href="https://play.google.com/store/apps/details?id=com.Slack" target="_blank" rel="noopener noreferrer">Slack (Google Play)</a>
+                 <span class="expectation">⚠️ Pending + Badge</span>
+            </li>
+            <!-- Existing -->
+            <li>
+                <a href="https://chromewebstore.google.com/detail/google-keep-chrome-extens/lpcaedmchfhocbbapmcbpinfpgnhiddi" target="_blank" rel="noopener noreferrer">Google Keep (Chrome Web Store)</a>
+                 <span class="expectation">✅ Approved + Badge</span>
+            </li>
+            <!-- New -->
+            <li>
+                <a href="https://chromewebstore.google.com/detail/grammarly-grammar-checke/kbfnbcaeplbcioakkpcpgfkobkghlhen" target="_blank" rel="noopener noreferrer">Grammarly (Chrome Web Store)</a>
+                 <span class="expectation">✅ Approved + Badge</span>
+            </li>
+        </ul>
+
+        <h2>Unlisted Resources</h2>
+        <p>These links are for sites not expected to be in the district's DPA list. The extension should show the "unlisted" status.</p>
+        <ul>
+            <!-- Existing -->
+            <li>
+                <a href="https://www.wikipedia.org/" target="_blank" rel="noopener noreferrer">Wikipedia</a>
+                <span class="expectation">❔ Unlisted</span>
+            </li>
+            <!-- New -->
+            <li>
+                <a href="https://www.nytimes.com/" target="_blank" rel="noopener noreferrer">The New York Times</a>
+                <span class="expectation">❔ Unlisted</span>
+            </li>
+            <li>
+                <a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <span class="expectation">❔ Unlisted</span>
+            </li>
+        </ul>
+    </div>
+</body>
 </html>
+
