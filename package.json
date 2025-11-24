@@ -1,7 +1,7 @@
 {
   "name": "sb29-guard",
   "displayName": "SB29 Guard",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Checks DPA status of current website in district records. Configure for your district. ♥️ Made by an Ohio teacher, for Ohio teachers + students.",
   "scripts": {
     "test": "jest",
