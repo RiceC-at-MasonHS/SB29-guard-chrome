@@ -12,7 +12,7 @@ function getDomainInfo(urlString) {
         return null;
     }
     try {
-        const url = new URL(urlString);
+        const url = new URL(urlString.startsWith('http') ? urlString : `https://${urlString}`);
         const hostname = url.hostname.toLowerCase();
 
         let appID = null;
@@ -34,8 +34,6 @@ function getDomainInfo(urlString) {
                     appStoreName = 'Chrome Web Store';
                     const chromePathParts = url.pathname.split("/");
                     if (chromePathParts.length > 2) {
-                         // Usually the ID is the last part, or second to last if there are params
-                         // Taking the last segment that looks like an ID
                          appID = chromePathParts[chromePathParts.length - 1];
                     }
                     break;
@@ -48,9 +46,7 @@ function getDomainInfo(urlString) {
                     isAppStore = true;
                     appStoreName = 'Google Workspace App';
                     const marketplacePathParts = url.pathname.split("/");
-                    // Typical path: /marketplace/app/app_name/app_id
                     const potentialAppID = marketplacePathParts[marketplacePathParts.length - 1];
-                    // FIX: Allow alphanumeric IDs (hashes), not just digits
                     if (/^[a-zA-Z0-9\-_]+$/.test(potentialAppID)) {
                         appID = potentialAppID;
                     }
@@ -63,8 +59,6 @@ function getDomainInfo(urlString) {
             console.warn("Error parsing app store URL:", e);
         }
 
-        // FIX: Naive slice(-2) removed. Return full hostname.
-        // The matching logic will handle "endsWith" or exact matches.
         return {
             hostname: hostname,
             isAppStore: isAppStore,
@@ -111,7 +105,6 @@ async function getAndUpdateDpaList() {
 
 /**
  * Parses CSV text into an array of objects.
- * Assumes the first row contains headers.
  */
 function parseCsv(csvText) {
     const lines = csvText.split(/\r?\n/);
@@ -124,7 +117,6 @@ function parseCsv(csvText) {
         const line = lines[i];
         if (!line.trim()) continue;
 
-        // Handle quoted fields properly (basic implementation)
         const row = [];
         let inQuotes = false;
         let currentValue = '';
@@ -146,8 +138,6 @@ function parseCsv(csvText) {
             obj[header] = row[index] || '';
         });
 
-        // FIX: Generate a synthetic ID if one is missing. 
-        // This ensures the viewer always has a reference ID.
         if (!obj.id) {
             obj.id = `row-${i}`; 
         }
@@ -159,42 +149,33 @@ function parseCsv(csvText) {
 
 /**
  * Determines the icon path based on DPA and T&L status.
- * Matches logic from icon-strategy.yaml
  */
 function getIconPath(tlStatus, dpaStatus) {
     const tl = (tlStatus || '').trim();
-    // Normalize "Received" to handle common misspelling "Recieved"
     let dpa = (dpaStatus || '').trim();
     if (dpa === 'Recieved') dpa = 'Received';
 
     if (tl === 'Approved' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
     if (tl === 'Not Required' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
-    
-    if (dpa === 'Denied') return 'images/icon-yellow-triangle.png'; // Staff only / Caution
+    if (dpa === 'Denied') return 'images/icon-yellow-triangle.png';
     if (tl === 'Rejected') return 'images/icon-red-x.png';
-
-    // Pending/Default cases
     if (dpa === 'Requested') return 'images/icon-orange-square.png';
     
-    // Default neutral
     return 'images/icon-neutral48.png';
 }
 
 // --- Event Listeners ---
 
-// On Alarm (Periodic Update)
 chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === 'updateDpaList') {
         await getAndUpdateDpaList();
     }
 });
 
-// Setup Alarm on Install
 chrome.runtime.onInstalled.addListener(() => {
     chrome.alarms.create('updateDpaList', { periodInMinutes: 60 });
 });
 
-// Tab Update Listener (Icon Update)
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         const domainInfo = getDomainInfo(tab.url);
@@ -205,39 +186,44 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
         let siteInfo = null;
         
-        // Find match
         if (domainInfo.isAppStore && domainInfo.appID) {
             siteInfo = dpaList.find(site => {
                 const siteDomainInfo = getDomainInfo(site.resource_link);
                 return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
             });
         } else {
-            // FIX: Robust hostname matching. 
-            // Checks if the visited hostname ends with the saved hostname (handles subdomains)
-            // or if they are exact matches.
+            // Updated matching logic: Checks explicit hostname column first
             siteInfo = dpaList.find(site => {
-                const siteDomainInfo = getDomainInfo(site.resource_link);
-                if (!siteDomainInfo) return false;
-                
-                // Example: visited 'canvas.instructure.com', stored 'instructure.com' -> Match
-                // Example: visited 'google.com', stored 'google.com' -> Match
-                return domainInfo.hostname === siteDomainInfo.hostname || 
-                       domainInfo.hostname.endsWith('.' + siteDomainInfo.hostname);
+                // 1. Try explicit hostname column
+                let targetHostname = site.hostname;
+
+                // 2. Fallback to extracting from resource_link
+                if (!targetHostname && site.resource_link) {
+                    const extracted = getDomainInfo(site.resource_link);
+                    if (extracted) targetHostname = extracted.hostname;
+                }
+
+                if (!targetHostname) return false;
+
+                // Normalize
+                targetHostname = targetHostname.toLowerCase().trim();
+
+                // Match: Exact or Subdomain (e.g., canvas.instructure.com ends with instructure.com)
+                return domainInfo.hostname === targetHostname || 
+                       domainInfo.hostname.endsWith('.' + targetHostname);
             });
         }
 
         const iconPath = siteInfo 
             ? getIconPath(siteInfo.current_tl_status, siteInfo.current_dpa_status)
-            : 'images/icon-neutral48.png'; // Default if not found
+            : 'images/icon-neutral48.png';
 
         chrome.action.setIcon({ path: iconPath, tabId: tabId });
     }
 });
 
-// Message Listener for Popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getSiteInfoForUrl") {
-        // FIX: Wrap async IIFE in try/catch to handle errors gracefully
         (async () => {
             try {
                 const domainInfo = getDomainInfo(request.url);
@@ -260,15 +246,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
                     });
                 } else {
+                    // Same updated matching logic for Popup
                     siteInfo = dpaList.find(site => {
-                        const siteDomainInfo = getDomainInfo(site.resource_link);
-                        if (!siteDomainInfo) return false;
-                        return domainInfo.hostname === siteDomainInfo.hostname || 
-                               domainInfo.hostname.endsWith('.' + siteDomainInfo.hostname);
+                        let targetHostname = site.hostname;
+                        if (!targetHostname && site.resource_link) {
+                            const extracted = getDomainInfo(site.resource_link);
+                            if (extracted) targetHostname = extracted.hostname;
+                        }
+
+                        if (!targetHostname) return false;
+                        targetHostname = targetHostname.toLowerCase().trim();
+
+                        return domainInfo.hostname === targetHostname || 
+                               domainInfo.hostname.endsWith('.' + targetHostname);
                     });
                 }
 
-                // Send the final data back to the popup
                 sendResponse({ siteInfo, domainInfo });
             } catch (error) {
                 console.error("Error in onMessage handler:", error);
@@ -276,6 +269,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         })();
 
-        return true; // Required to indicate response will be sent asynchronously
+        return true;
     }
 });
