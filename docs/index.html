@@ -32,29 +32,59 @@
             color: #666;
             font-size: 0.9em;
             margin-bottom: 2rem;
+            font-style: italic;
+        }
+        .alert-box {
+            background-color: #e8f4fd;
+            border-left: 4px solid #007bff;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Privacy Policy for the "SB29-guard-chrome" Extension</h1>
-        <p class="last-updated">Last Updated: September 27, 2025</p>
+        <h1>Privacy Policy for the "SB29 Guard" Extension</h1>
+        <p class="last-updated">Last Updated: November 24, 2025</p>
 
-        <h2>Our Commitment to Privacy</h2>
         <p>
-            The "SB29-guard-chrome" extension was built with student and teacher privacy as its highest priority. Our guiding principle is **zero data collection**. This extension **does not** collect, store, transmit, or share any of your personal information or browsing activity.
+            The <strong>SB29 Guard</strong> Chrome Extension is designed with a "Privacy First" architecture. 
+            Our mission is to help students and teachers identify approved software without compromising their own privacy.
         </p>
 
-        <h2>How It Works</h2>
+        <h2>Data Collection Policy: Zero Data Collection</h2>
         <p>
-            To protect your privacy, the extension is designed to perform all of its checks locally on your computer. The process is as follows:
+            This extension <strong>does not collect, store, or transmit any personal user data</strong> to external servers. 
+            It operates entirely as a "client-side" application.
         </p>
-        <ol>
+
+        <h2>Why does the extension ask to "read my browsing history"?</h2>
+        <div class="alert-box">
+            <strong>Transparency Notice:</strong> When installing, Chrome may warn you that this extension can <em>"read and change all your data on the websites you visit"</em> or <em>"read your browsing history."</em>
+        </div>
+        <p>
+            We require this permission solely to provide the automatic "Guard" feature. Here is exactly how it is used:
+        </p>
+        <ul>
             <li>
-                <strong>Fetching the Master List:</strong> Periodically (approximately once per day), the extension anonymously downloads an official list of websites and their data privacy agreement (DPA) statuses from a secure, district-managed server. This is the only network communication the extension performs.
+                <strong>The Function:</strong> The extension automatically changes its icon color (Green, Red, Yellow) when you navigate to a website that matches your district's software list.
             </li>
             <li>
-                <strong>Local Storage:</strong> This list is stored locally within the extension on your computer.
+                <strong>The Technical Requirement:</strong> To perform this check automatically in the background, the extension requires the <code>host_permissions</code> (specifically <code>&lt;all_urls&gt;</code>) to detect the URL of your active tab.
+            </li>
+            <li>
+                <strong>The Privacy Guarantee:</strong> This URL check happens <strong>100% locally on your device</strong>. The extension compares the URL you visit against a list stored locally in the extension's memory. It does <strong>not</strong> send your browsing history to a cloud server, database, or third-party analytics service.
+            </li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <ol>
+            <li>
+                <strong>District Data:</strong> You or your administrator provides a link to a public CSV file containing approved and requested software.
+            </li>
+            <li>
+                <strong>Local Storage:</strong> This list is downloaded and stored locally within the extension's storage on your computer.
             </li>
             <li>
                 <strong>Local Checks:</strong> When you visit a website, the extension checks the URL against the list it has stored locally. Your browsing history, the sites you visit, and any other personal data **never leave your computer**.
@@ -63,14 +93,13 @@
 
         <h2>Information We Explicitly DO NOT Collect</h2>
         <p>
-            We want to be perfectly clear. The "SB29-guard-chrome" extension does not have access to, nor does it collect, any of the following:
+            We want to be perfectly clear. The "SB29 Guard" extension does not have access to, nor does it collect, any of the following for analytics or transmission:
         </p>
         <ul>
-            <li>Your browsing history</li>
+            <li>Your browsing history log</li>
             <li>Your name, email address, or any other personally identifiable information (PII)</li>
-            <li>Data you enter into forms on websites</li>
+            <li>Data you enter into forms on websites (passwords, search terms, etc.)</li>
             <li>Your IP address</li>
-            <li>Any other data related to your online activities</li>
         </ul>
 
         <h2>Changes to This Policy</h2>
@@ -80,7 +109,7 @@
 
         <h2>Contact Us</h2>
         <p>
-            If you have any questions about this privacy policy or the extension, please contact [Your School's IT Department Contact Email or Helpdesk Link].
+            If you have any questions about this privacy policy or the extension, please check our <a href="https://github.com/RiceC-at-MasonHS/SB29-guard-chrome">GitHub Repository</a>.
         </p>
     </div>
 </body>
