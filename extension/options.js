@@ -1,29 +1,29 @@
 // Saves options to chrome.storage
 function save_options() {
   const sheetUrl = document.getElementById('sheet-url').value;
-  const formUrl = document.getElementById('form-url').value; // Get the new form URL
+  const formUrl = document.getElementById('form-url').value;
+  
   chrome.storage.local.set({
     sheetUrl: sheetUrl,
-    formUrl: formUrl // Save the new form URL
+    formUrl: formUrl,
+    lastUpdated: 0 // Reset cache when URL changes to force fresh fetch
   }, function() {
-    // Update status to let user know options were saved.
     const status = document.getElementById('status');
-    status.textContent = 'Options saved.';
+    status.textContent = 'Options saved. Cache cleared.';
     setTimeout(function() {
       status.textContent = '';
-    }, 750);
+    }, 1500);
   });
 }
 
-// Restores select box and checkbox state using the preferences
-// stored in chrome.storage.
+// Restores input state
 function restore_options() {
   chrome.storage.local.get({
     sheetUrl: '',
-    formUrl: '' // Restore the new form URL
+    formUrl: ''
   }, function(items) {
     document.getElementById('sheet-url').value = items.sheetUrl;
-    document.getElementById('form-url').value = items.formUrl; // Set the new form URL
+    document.getElementById('form-url').value = items.formUrl;
   });
 }
 

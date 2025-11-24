@@ -1,4 +1,4 @@
-const USER_AGENT = '__USER_AGENT_PLACEHOLDER__';
+const USER_AGENT = 'SB29-Guard-Chrome-Extension/0.2.1';
 const CACHE_DURATION_MINUTES = 60 * 24; // Cache data for 24 hours
 
 /**
@@ -13,14 +13,14 @@ function getDomainInfo(urlString) {
     }
     try {
         const url = new URL(urlString);
-        const hostnameParts = url.hostname.split('.');
+        const hostname = url.hostname.toLowerCase();
 
         let appID = null;
         let isAppStore = false;
-        let appStoreName = null; // Variable to hold the specific store name
+        let appStoreName = null;
         
         try {
-            switch (url.hostname) {
+            switch (hostname) {
                 case 'apps.apple.com':
                     isAppStore = true;
                     appStoreName = 'Apple App Store';
@@ -33,260 +33,213 @@ function getDomainInfo(urlString) {
                     isAppStore = true;
                     appStoreName = 'Chrome Web Store';
                     const chromePathParts = url.pathname.split("/");
-                    if (chromePathParts.length > 1 && chromePathParts[1] === 'detail') {
-                        appID = chromePathParts[chromePathParts.length - 1];
+                    if (chromePathParts.length > 2) {
+                         // Usually the ID is the last part, or second to last if there are params
+                         // Taking the last segment that looks like an ID
+                         appID = chromePathParts[chromePathParts.length - 1];
                     }
                     break;
                 case 'play.google.com':
                     isAppStore = true;
                     appStoreName = 'Google Play Store';
-                    if (url.pathname.startsWith('/store/apps/details')) {
-                        appID = url.searchParams.get("id");
-                    }
+                    appID = url.searchParams.get('id');
                     break;
                 case 'workspace.google.com':
                     isAppStore = true;
-                    appStoreName = 'Google Workspace Marketplace';
-                    const workspacePathParts = url.pathname.split("/");
-                    if (workspacePathParts.length > 2 && workspacePathParts[1] === 'marketplace' && workspacePathParts[2] === 'app') {
-                        const potentialAppID = workspacePathParts[workspacePathParts.length - 1];
-                        if (/^\d+$/.test(potentialAppID)) {
-                            appID = potentialAppID;
-                        }
+                    appStoreName = 'Google Workspace App';
+                    const marketplacePathParts = url.pathname.split("/");
+                    // Typical path: /marketplace/app/app_name/app_id
+                    const potentialAppID = marketplacePathParts[marketplacePathParts.length - 1];
+                    // FIX: Allow alphanumeric IDs (hashes), not just digits
+                    if (/^[a-zA-Z0-9\-_]+$/.test(potentialAppID)) {
+                        appID = potentialAppID;
                     }
                     break;
+                default:
+                    isAppStore = false;
+                    break;
             }
-        } catch (error) {
-            console.warn(`Could not parse the path to determine app-id: ${urlString}`);
-            console.warn(error)
-            // Don't return null here, as the base domain info is still valid.
+        } catch (e) {
+            console.warn("Error parsing app store URL:", e);
         }
 
-        let hostnameForMatching;
-        if (isAppStore) {
-            // Use full hostname for app stores
-            hostnameForMatching = url.hostname; 
-        } else {
-            // otherwise use primary domain only
-            if (hostnameParts.length > 1) {
-                hostnameForMatching = hostnameParts.slice(-2).join('.');
-            } else {
-                // or handle TOP-LEVEL-DOMAIN only.... rare
-                hostnameForMatching = url.hostname;
-            }
-        }
-
+        // FIX: Naive slice(-2) removed. Return full hostname.
+        // The matching logic will handle "endsWith" or exact matches.
         return {
-            fullHostname: url.hostname,
-            hostname: hostnameForMatching, // This is what's used for matching
-            isInstalled: appID !== null,
-            appID: appID,
+            hostname: hostname,
             isAppStore: isAppStore,
-            appStoreName: appStoreName
+            appStoreName: appStoreName,
+            appID: appID
         };
-    } catch (error) {
-        console.warn(`Could not parse invalid URL: ${urlString}`);
-        console.warn(error);
+
+    } catch (e) {
+        console.error("Invalid URL:", urlString, e);
         return null;
     }
 }
 
-
-// --- Core API Fetching Logic ---
-
 /**
- * Parses a CSV string into an array of objects.
- * @param {string} csvText The CSV string to parse.
- * @returns {Array<object>} An array of objects representing the CSV data.
+ * Fetches and parses the DPA list from the CSV URL stored in options.
  */
-function parseCsv(csvText) {
-    const lines = csvText.split('\n');
-    const headers = lines[0].split(',').map(header => header.trim());
-    const records = [];
-    for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(value => value.trim());
-        if (values.length === headers.length) {
-            const record = {};
-            for (let j = 0; j < headers.length; j++) {
-                record[headers[j]] = values[j];
-            }
-            records.push(record);
-        }
+async function getAndUpdateDpaList() {
+    const data = await chrome.storage.local.get(['dpaList', 'lastUpdated', 'sheetUrl']);
+    const now = Date.now();
+
+    if (data.dpaList && data.lastUpdated && (now - data.lastUpdated < CACHE_DURATION_MINUTES * 60 * 1000)) {
+        return data.dpaList;
     }
-    return records;
-}
 
-/**
- * Fetches the complete DPA list from the Google Sheet CSV URL.
- * @returns {Promise<Array|null>} A promise that resolves to the array of DPA data or null on error.
- */
-async function fetchDpaData() {
-    const result = await chrome.storage.local.get(['sheetUrl']);
-    const sheetUrl = result.sheetUrl;
-
-    if (!sheetUrl) {
-        console.warn('Google Sheet URL is not configured. Please set it in the options page.');
+    if (!data.sheetUrl) {
         return null;
     }
 
     try {
-        const response = await fetch(sheetUrl);
-        if (!response.ok) {
-            console.error(`Failed to fetch Google Sheet CSV: ${response.status} ${response.statusText}`);
-            return null;
-        }
+        const response = await fetch(data.sheetUrl);
         const csvText = await response.text();
-        const data = parseCsv(csvText);
-        console.log('Successfully fetched and parsed DPA data from Google Sheet.');
-        return data;
+        const dpaList = parseCsv(csvText);
+
+        await chrome.storage.local.set({
+            dpaList: dpaList,
+            lastUpdated: now
+        });
+        return dpaList;
     } catch (error) {
-        console.error('Network or fetch error:', error);
+        console.error('Failed to fetch DPA list:', error);
         return null;
     }
 }
 
 /**
- * Gets DPA data, prioritizing cache, and fetches new data if cache is stale or missing.
+ * Parses CSV text into an array of objects.
+ * Assumes the first row contains headers.
  */
-async function getAndUpdateDpaList() {
-    const now = new Date().getTime();
-    const result = await chrome.storage.local.get(['dpaList', 'lastFetch']);
+function parseCsv(csvText) {
+    const lines = csvText.split(/\r?\n/);
+    if (lines.length < 2) return [];
 
-    if (result.dpaList && result.lastFetch && (now - result.lastFetch < CACHE_DURATION_MINUTES * 60 * 1000)) {
-        console.log('Using cached DPA list.');
-        return result.dpaList;
-    }
+    const headers = lines[0].split(',').map(h => h.trim());
+    const result = [];
 
-    console.log('Cache stale or missing. Fetching new DPA list.');
-    const dpaList = await fetchDpaData();
-    if (dpaList) {
-        await chrome.storage.local.set({ dpaList: dpaList, lastFetch: now });
-        return dpaList;
-    }
-    return result.dpaList || null;
-}
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
 
+        // Handle quoted fields properly (basic implementation)
+        const row = [];
+        let inQuotes = false;
+        let currentValue = '';
+        
+        for (let char of line) {
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                row.push(currentValue.trim());
+                currentValue = '';
+            } else {
+                currentValue += char;
+            }
+        }
+        row.push(currentValue.trim());
 
-// --- Extension Logic ---
-
-/**
- * Determines a single, overall status from the detailed site information.
- * @param {object} siteInfo - The data object for a specific site from the API.
- * @returns {string} The simplified status key (e.g., 'approved', 'denied', 'staff_only').
- */
-function determineOverallStatus(siteInfo) {
-    if (!siteInfo) return 'unlisted';
-
-    const tlStatus = siteInfo.current_tl_status;
-    const dpaStatus = siteInfo.current_dpa_status;
-
-    if (tlStatus === 'Rejected') return 'denied';
-    if (dpaStatus === 'Denied') return 'staff_only';
-
-    const isApproved = (tlStatus === 'Approved' || tlStatus === 'Not Required');
-    const dpaComplete = (dpaStatus === 'Received' || dpaStatus === 'Not Required');
-
-    if (isApproved && dpaComplete) return 'approved';
-
-    return 'pending';
-}
-
-/**
- * Updates the extension icon based on the site's status.
- * @param {string} status - The simplified status key.
- * @param {number} tabId - The ID of the tab to update.
- * @param {boolean} isInstalled - A flag to indicate if this is an installed app
- */
-function updateIcon(status, tabId, isInstalled) {
-    let iconDetails = {};
-    switch (status) {
-        case 'approved':   iconDetails = { path: "images/icon-green-circle.png"}; break;
-        case 'denied':     iconDetails = { path: "images/icon-red-x.png"}; break;
-        case 'staff_only': iconDetails = { path: "images/icon-yellow-triangle.png"}; break;
-        case 'pending':    iconDetails = { path: "images/icon-orange-square.png"}; break;
-        case 'unlisted':   iconDetails = { path: "images/icon-purple-diamond.png"}; break;
-        default:           iconDetails = { path: "images/icon-neutral48.png"}; break;
-    }
-    chrome.action.setIcon({ path: { "48": iconDetails.path }, tabId: tabId });
-
-    if (isInstalled){
-        chrome.action.setBadgeText({ text: '⇲', tabId: tabId });
-        chrome.action.setBadgeBackgroundColor({ color: '#ebebeb', tabId: tabId });
-    } else {
-        chrome.action.setBadgeText({ text: '', tabId: tabId });
-    }
-}
-
-/**
- * Main handler for tab updates.
- */
-async function handleTabUpdate(tabId, changeInfo, tab) {
-    if (changeInfo.status !== 'complete' || !tab.url || !tab.url.startsWith('http')) {
-        return;
-    }
-
-    const tabDomainInfo = getDomainInfo(tab.url);
-    if (!tabDomainInfo) { // If the current tab's URL is a
-        updateIcon('neutral', tabId, false);
-        return;
-    }
-
-    const dpaList = await getAndUpdateDpaList();
-    if (!dpaList) {
-        console.warn('No DPA list available to check against.');
-        updateIcon('neutral', tabId, tabDomainInfo.isInstalled);
-        return;
-    }
-    
-    let siteInfo = null;
-    // Find the site by matching the app ID or hostname.
-    if (tabDomainInfo.isInstalled){
-        siteInfo = dpaList.find(site => {
-            const siteDomainInfo = getDomainInfo(site.resource_link);
-            return siteDomainInfo && siteDomainInfo.isInstalled && siteDomainInfo.appID === tabDomainInfo.appID;
+        const obj = {};
+        headers.forEach((header, index) => {
+            obj[header] = row[index] || '';
         });
-    } else if (!tabDomainInfo.isAppStore) { // Only match hostname if it's NOT a generic app store page
-        siteInfo = dpaList.find(site => {
-            const siteDomainInfo = getDomainInfo(site.resource_link);
-            return siteDomainInfo && !siteDomainInfo.isInstalled && siteDomainInfo.hostname === tabDomainInfo.hostname;
-        });
-    }
 
-    const overallStatus = determineOverallStatus(siteInfo);
-    console.log(`Site found: ${tabDomainInfo.hostname}, Status: ${overallStatus}`);
-    updateIcon(overallStatus, tabId, tabDomainInfo.isInstalled);
+        // FIX: Generate a synthetic ID if one is missing. 
+        // This ensures the viewer always has a reference ID.
+        if (!obj.id) {
+            obj.id = `row-${i}`; 
+        }
+
+        result.push(obj);
+    }
+    return result;
 }
 
 /**
- * Handles the periodic alarm to refresh the DPA list.
- * @param {object} alarm - The alarm object from the Chrome API.
+ * Determines the icon path based on DPA and T&L status.
+ * Matches logic from icon-strategy.yaml
  */
-function handleAlarm(alarm) {
-    if (alarm.name === 'refreshDpaList') {
-        console.log('Periodic alarm triggered. Refreshing DPA list.');
-        getAndUpdateDpaList();
-    }
+function getIconPath(tlStatus, dpaStatus) {
+    const tl = (tlStatus || '').trim();
+    // Normalize "Received" to handle common misspelling "Recieved"
+    let dpa = (dpaStatus || '').trim();
+    if (dpa === 'Recieved') dpa = 'Received';
+
+    if (tl === 'Approved' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
+    if (tl === 'Not Required' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
+    
+    if (dpa === 'Denied') return 'images/icon-yellow-triangle.png'; // Staff only / Caution
+    if (tl === 'Rejected') return 'images/icon-red-x.png';
+
+    // Pending/Default cases
+    if (dpa === 'Requested') return 'images/icon-orange-square.png';
+    
+    // Default neutral
+    return 'images/icon-neutral48.png';
 }
 
+// --- Event Listeners ---
 
-// ======================================================================== //
-// CRITICAL JEST FIX: WRAP ALL CHROME API LISTENERS IN A CONDITIONAL BLOCK  //
-// ======================================================================== //
-// This ensures the code below only runs in the extension environment,
-// and is completely ignored when Jest tries to import this file for testing.
-if (typeof chrome !== 'undefined' && chrome.runtime) {
-    
-    // --- Event Listeners ---
-    chrome.tabs.onUpdated.addListener(handleTabUpdate);
-    chrome.runtime.onStartup.addListener(getAndUpdateDpaList);
-    chrome.runtime.onInstalled.addListener(getAndUpdateDpaList);
-    chrome.alarms.create('refreshDpaList', { delayInMinutes: 1, periodInMinutes: CACHE_DURATION_MINUTES });    
-    chrome.alarms.onAlarm.addListener(handleAlarm);
+// On Alarm (Periodic Update)
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === 'updateDpaList') {
+        await getAndUpdateDpaList();
+    }
+});
 
-    // --- Message Listener for Popup ---
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === "getSiteInfoForUrl") {
-            (async () => {
+// Setup Alarm on Install
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.alarms.create('updateDpaList', { periodInMinutes: 60 });
+});
+
+// Tab Update Listener (Icon Update)
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+        const domainInfo = getDomainInfo(tab.url);
+        if (!domainInfo) return;
+
+        const dpaList = await getAndUpdateDpaList();
+        if (!dpaList) return;
+
+        let siteInfo = null;
+        
+        // Find match
+        if (domainInfo.isAppStore && domainInfo.appID) {
+            siteInfo = dpaList.find(site => {
+                const siteDomainInfo = getDomainInfo(site.resource_link);
+                return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
+            });
+        } else {
+            // FIX: Robust hostname matching. 
+            // Checks if the visited hostname ends with the saved hostname (handles subdomains)
+            // or if they are exact matches.
+            siteInfo = dpaList.find(site => {
+                const siteDomainInfo = getDomainInfo(site.resource_link);
+                if (!siteDomainInfo) return false;
+                
+                // Example: visited 'canvas.instructure.com', stored 'instructure.com' -> Match
+                // Example: visited 'google.com', stored 'google.com' -> Match
+                return domainInfo.hostname === siteDomainInfo.hostname || 
+                       domainInfo.hostname.endsWith('.' + siteDomainInfo.hostname);
+            });
+        }
+
+        const iconPath = siteInfo 
+            ? getIconPath(siteInfo.current_tl_status, siteInfo.current_dpa_status)
+            : 'images/icon-neutral48.png'; // Default if not found
+
+        chrome.action.setIcon({ path: iconPath, tabId: tabId });
+    }
+});
+
+// Message Listener for Popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "getSiteInfoForUrl") {
+        // FIX: Wrap async IIFE in try/catch to handle errors gracefully
+        (async () => {
+            try {
                 const domainInfo = getDomainInfo(request.url);
                 if (!domainInfo) {
                     sendResponse({ error: 'Invalid URL.' });
@@ -295,29 +248,34 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 
                 const dpaList = await getAndUpdateDpaList();
                 if (!dpaList) {
-                    sendResponse({ error: 'DPA data not yet loaded.' });
+                    sendResponse({ error: 'DPA data not yet loaded. Please check Options.' });
                     return;
                 }
 
-            let siteInfo = null;
-            if (domainInfo.isInstalled){
-                siteInfo = dpaList.find(site => {
-                    const siteDomainInfo = getDomainInfo(site.resource_link);
-                    return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
-                });
-            } else {
-                siteInfo = dpaList.find(site => {
-                    const siteDomainInfo = getDomainInfo(site.resource_link);
-                    return siteDomainInfo && siteDomainInfo.hostname === domainInfo.hostname;
-                });
-            }
+                let siteInfo = null;
 
-            // Send the final data back to the popup
-            sendResponse({ siteInfo, domainInfo });
+                if (domainInfo.isAppStore && domainInfo.appID) {
+                    siteInfo = dpaList.find(site => {
+                        const siteDomainInfo = getDomainInfo(site.resource_link);
+                        return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
+                    });
+                } else {
+                    siteInfo = dpaList.find(site => {
+                        const siteDomainInfo = getDomainInfo(site.resource_link);
+                        if (!siteDomainInfo) return false;
+                        return domainInfo.hostname === siteDomainInfo.hostname || 
+                               domainInfo.hostname.endsWith('.' + siteDomainInfo.hostname);
+                    });
+                }
+
+                // Send the final data back to the popup
+                sendResponse({ siteInfo, domainInfo });
+            } catch (error) {
+                console.error("Error in onMessage handler:", error);
+                sendResponse({ error: 'An internal error occurred.' });
+            }
         })();
 
-                return true; // Required to indicate you will send a response asynchronously
-
-            }
-    });
-}   
+        return true; // Required to indicate response will be sent asynchronously
+    }
+});

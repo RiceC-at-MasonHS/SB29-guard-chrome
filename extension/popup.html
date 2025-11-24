@@ -41,31 +41,36 @@
             padding: 8px 12px;
             border-radius: 6px;
             text-align: center;
-            font-weight: 500;
-            font-size: 14px;
             margin-top: 12px;
+            font-size: 14px;
             transition: background-color 0.2s;
         }
         .button:hover {
             background-color: #0056b3;
         }
-        #disclaimer {
-            font-size: 0.7rem; /* Increased size slightly for readability */
-            color: #606060;
-            line-height: 1.25; /* Improved line spacing */
-            text-align: center;
+        /* Theme-specific purple for the Request button */
+        .button.purple {
+            background-color: #6f42c1;
         }
-        /* Styling for all links within the disclaimer */
+        .button.purple:hover {
+            background-color: #59359a;
+        }
+        #disclaimer {
+            font-size: 10px;
+            color: #888;
+            margin-top: 12px;
+            text-align: center;
+            line-height: 1.4;
+        }
         #disclaimer a,
         #disclaimer a:visited,
         #disclaimer a:active {
-            color: #606060; /* Match the text color */
+            color: #606060;
             text-decoration: underline;
             transition: opacity 0.2s ease-in-out;
         }
-        /* Styling for link hover state */
         #disclaimer a:hover {
-            opacity: 0.7; /* Fade slightly for hover feedback */
+            opacity: 0.7;
         }
     </style>
 </head>
@@ -78,11 +83,14 @@
             <p id="tl-status"></p>
             <p id="dpa-status"></p>
             <p id="is-app-text"></p>
-            <!-- This link now points to the internal data viewer page -->
+            
+            <!-- This link points to the internal data viewer page -->
             <a href="viewer.html" id="view-all-link" class="button" target="_blank" rel="noopener noreferrer">View All Entries</a>
-            <a href="#" id="request-form-link" class="button" target="_blank" rel="noopener noreferrer" style="display: none;">Request DPA Review</a>
-            <!-- A basic disclaimer and more resources to help users understand context -->
-            <p id="disclaimer">Don’t share <a href="https://csrc.nist.gov/glossary/term/PII" target="_blank">PII</a> or violate <a href="https://studentprivacy.ed.gov/ferpa" target="_blank">FERPA</a> | <a href="https://github.com/RiceC-at-MasonHS/SB29-guard-chrome/blob/main/LICENSE" target="_blank">GNU GPL 3.0</a></p>
+            
+            <!-- Added 'purple' class to this button -->
+            <a href="#" id="request-form-link" class="button purple" target="_blank" rel="noopener noreferrer" style="display: none;">Request DPA Review</a>
+            
+            <p id="disclaimer">Don’t share <a href="https://csrc.nist.gov/glossary/term/PII" target="_blank">PII</a> or violate <a href="https://studentprivacy.ed.gov/ferpa" target="_blank">FERPA</a> | <a href="https://github.com/RiceC-at-MasonHS/SB29-guard-chrome" target="_blank">GitHub</a></p>
         </div>
     </div>
     <script src="popup.js"></script>

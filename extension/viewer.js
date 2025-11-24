@@ -1,147 +1,124 @@
-let dpaList = [];
+let allEntries = [];      // The full dataset
+let currentEntries = [];  // The currently filtered list
 let currentIndex = 0;
-let filteredDpaList = []; // New array to hold search results
 
 // Function to render a single DPA entry
-function renderEntry(index, listToRender = dpaList) {
+function renderEntry() {
   const container = document.getElementById('data-container');
+  const positionSpan = document.getElementById('position');
   container.innerHTML = '';
 
-  if (listToRender.length === 0) {
-    container.textContent = 'No data available.';
-    document.getElementById('position').textContent = '';
+  if (currentEntries.length === 0) {
+    container.innerHTML = '<p style="text-align:center; color: #666;">No data available.</p>';
+    positionSpan.textContent = '0 / 0';
     return;
   }
 
-  const entry = listToRender[index];
+  const entry = currentEntries[currentIndex];
+  positionSpan.textContent = `${currentIndex + 1} / ${currentEntries.length}`;
+
+  // Determine colors based on status
+  let headerColor = '#607d8b'; // Neutral Grey
+  if (entry.current_tl_status === 'Approved') headerColor = '#2e7d32'; // Green
+  else if (entry.current_tl_status === 'Rejected') headerColor = '#c62828'; // Red
+  else if (entry.current_dpa_status === 'Pending' || entry.current_dpa_status === 'Requested') headerColor = '#ef6c00'; // Orange
+
   const entryDiv = document.createElement('div');
   entryDiv.className = 'entry';
-
-  // Render the example HTML card using the entry data
-  // This is a simplified version and would need proper templating
-  // or a more robust rendering function for the full card structure.
-  // For now, let's just display key fields from the example card.
-
-  const headerColor = entry.current_tl_status === 'Approved' ? '#008a00' : '#FF9800'; // Example colors
-  const headerTextColor = 'white';
+  // FIX: Using inline styles instead of Tailwind JIT classes
+  entryDiv.style.borderColor = headerColor;
 
   entryDiv.innerHTML = `
-    <div class="rounded-lg bg-card text-card-foreground shadow-sm w-full hover:shadow-lg transition-shadow duration-200 border-2 border-[${headerColor}]">
-      <div class="flex flex-col space-y-1.5 relative bg-[${headerColor}] p-4">
-        <h3 class="tracking-tight text-lg font-semibold text-[${headerTextColor}]">${entry.software_name}</h3>
-        <p class="text-sm text-[${headerTextColor}]/90">Requested by ${entry.requester_name || 'N/A'}</p>
-      </div>
-      <div class="p-4">
-        <div class="grid gap-4">
-          <div class="flex justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <span class="text-sm">T&amp;L: ${entry.current_tl_status || 'N/A'}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-sm">DPA: ${entry.current_dpa_status || 'N/A'}</span>
-            </div>
-          </div>
-          <div>
-            <h3 class="font-medium mb-2">Description:</h3>
-            <p class="text-sm text-gray-600">${entry.purpose || 'N/A'}</p>
-          </div>
-          <div class="border-l-4 border-[${headerColor}] pl-3 bg-green-50 p-2 rounded-r">
-            <h3 class="font-medium text-[${headerColor}] mb-1">Usage Instructions:</h3>
-            <p class="text-sm text-gray-700">${entry.use_instructions || 'N/A'}</p>
-          </div>
-          <div>
-            <a href="${entry.resource_link || '#'}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:underline">Visit Website →</a>
-          </div>
-        </div>
-      </div>
+    <div class="entry-header" style="background-color: ${headerColor};">
+        <h3>${entry.software_name || 'Unknown Software'}</h3>
+        <p>${entry.vendor_name || 'Unknown Vendor'}</p>
+    </div>
+    <div class="entry-content">
+        <span class="field-label">T&L Status</span>
+        <span class="field-value">${entry.current_tl_status || '-'}</span>
+
+        <span class="field-label">DPA Status</span>
+        <span class="field-value">${entry.current_dpa_status || '-'}</span>
+
+        <span class="field-label">Description</span>
+        <span class="field-value">${entry.software_description || 'No description provided.'}</span>
+        
+        <span class="field-label">Resource Type</span>
+        <span class="field-value">${entry.resource_type || '-'}</span>
+
+        <span class="field-label">Privacy Policy</span>
+        <span class="field-value">
+            ${entry.privacy_policy_link ? `<a href="${entry.privacy_policy_link}" target="_blank">Link</a>` : 'N/A'}
+        </span>
     </div>
   `;
 
   container.appendChild(entryDiv);
-  document.getElementById('position').textContent = `${index + 1} of ${listToRender.length}`;
+
+  // Update button states
+  document.getElementById('prev').disabled = (currentIndex === 0);
+  document.getElementById('next').disabled = (currentIndex === currentEntries.length - 1);
 }
 
-// Existing navigation functions
 function showPrev() {
   if (currentIndex > 0) {
     currentIndex--;
-    renderEntry(currentIndex);
+    renderEntry();
   }
 }
 
 function showNext() {
-  if (currentIndex < dpaList.length - 1) {
+  if (currentIndex < currentEntries.length - 1) {
     currentIndex++;
-    renderEntry(currentIndex);
+    renderEntry();
   }
 }
 
-// New search functions
-function handleSearch() {
-  const searchTerm = document.getElementById('dpa-search-input').value.toLowerCase();
-  const searchResultsContainer = document.getElementById('dpa-search-results');
-  searchResultsContainer.innerHTML = ''; // Clear previous results
-
-  if (searchTerm.length > 0) {
-    filteredDpaList = dpaList.filter(entry =>
-      entry.software_name && entry.software_name.toLowerCase().includes(searchTerm)
-    );
-
-    if (filteredDpaList.length > 0) {
-      filteredDpaList.forEach((entry, index) => {
-        const resultItem = document.createElement('div');
-        resultItem.className = 'search-result-item'; // Add a class for styling
-        resultItem.textContent = entry.software_name;
-        resultItem.addEventListener('click', () => {
-          renderEntry(index, filteredDpaList); // Render selected filtered entry
-          searchResultsContainer.innerHTML = ''; // Clear results after selection
-          // Optionally, hide search results container or clear search input
-          document.getElementById('dpa-search-input').value = entry.software_name; // Show selected name in input
-        });
-        searchResultsContainer.appendChild(resultItem);
-      });
-    } else {
-      searchResultsContainer.textContent = 'No matching software found.';
-    }
-    // Temporarily disable prev/next buttons if search results are displayed
-    document.getElementById('prev').disabled = true;
-    document.getElementById('next').disabled = true;
-
+// FIX: Improved Search Logic
+function handleSearch(e) {
+  const searchTerm = e.target.value.toLowerCase();
+  
+  if (!searchTerm) {
+    // Reset to full list
+    currentEntries = [...allEntries];
   } else {
-    // If search term is empty, revert to original list view
-    filteredDpaList = [];
-    renderEntry(currentIndex); // Render the current item from the original list
-    // Re-enable prev/next buttons
-    document.getElementById('prev').disabled = false;
-    document.getElementById('next').disabled = false;
+    // Filter list
+    currentEntries = allEntries.filter(entry => {
+        const name = (entry.software_name || '').toLowerCase();
+        const vendor = (entry.vendor_name || '').toLowerCase();
+        return name.includes(searchTerm) || vendor.includes(searchTerm);
+    });
   }
-}
 
+  // FIX: Reset index to 0 so we don't end up out of bounds in the new list
+  currentIndex = 0;
+  renderEntry();
+}
 
 async function init() {
   const result = await chrome.storage.local.get(['dpaList']);
   if (result.dpaList) {
-    dpaList = result.dpaList;
+    allEntries = result.dpaList;
+    currentEntries = [...allEntries];
 
-    // Check for ID in URL query parameter
+    // Check for ID in URL query parameter (e.g. from popup click)
     const urlParams = new URLSearchParams(window.location.search);
     const dpaId = urlParams.get('id');
 
     if (dpaId) {
-      const entryIndex = dpaList.findIndex(entry => entry.id === dpaId);
+      // Find the index of the specific ID in the CURRENT list
+      const entryIndex = currentEntries.findIndex(entry => entry.id === dpaId);
       if (entryIndex !== -1) {
         currentIndex = entryIndex;
       }
     }
 
-    renderEntry(currentIndex);
+    renderEntry();
   }
 
-  // Event listeners for navigation
+  // Event listeners
   document.getElementById('prev').addEventListener('click', showPrev);
   document.getElementById('next').addEventListener('click', showNext);
-
-  // Event listener for search input
   document.getElementById('dpa-search-input').addEventListener('input', handleSearch);
 }
 
