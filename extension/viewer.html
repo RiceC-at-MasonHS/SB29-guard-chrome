@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SB29 Guard Data Viewer</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    .entry {
+      /* Mimicking basic card styling */
+      border: 1px solid #e2e8f0; /* border-2 from example */
+      border-radius: 0.5rem; /* rounded-lg */
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
+      margin-bottom: 1em;
+      width: 100%;
+      transition: box-shadow 0.2s ease-in-out; /* transition-shadow duration-200 */
+      overflow: hidden; /* For rounded corners to work correctly with inner divs */
+    }
+    .entry:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* hover:shadow-lg */
+    }
+    .entry .header-bg {
+        padding: 1rem; /* p-4 */
+        color: white; /* text-white */
+    }
+    .entry h3 {
+        font-size: 1.125rem; /* text-lg */
+        font-weight: 600; /* font-semibold */
+        letter-spacing: -0.025em; /* tracking-tight */
+    }
+    .entry .text-white-90 {
+        color: rgba(255, 255, 255, 0.9); /* text-white/90 */
+        font-size: 0.875rem; /* text-sm */
+    }
+    .entry .p-4-content {
+        padding: 1rem; /* p-4 */
+    }
+    .entry .grid {
+        display: grid;
+        gap: 1rem; /* gap-4 */
+    }
+    .entry .flex {
+        display: flex;
+    }
+    .entry .justify-between {
+        justify-content: space-between;
+    }
+    .entry .items-center {
+        align-items: center;
+    }
+    .entry .gap-2 {
+        gap: 0.5rem; /* gap-2 */
+    }
+    .entry .text-sm {
+        font-size: 0.875rem; /* text-sm */
+    }
+    .entry .font-medium {
+        font-weight: 500; /* font-medium */
+    }
+    .entry .text-gray-600 {
+        color: #4a5568; /* text-gray-600 */
+    }
+    .entry .usage-instructions {
+        border-left-width: 4px; /* border-l-4 */
+        padding-left: 0.75rem; /* pl-3 */
+        background-color: #ecfdf5; /* bg-green-50 */
+        padding: 0.5rem; /* p-2 */
+        border-radius: 0.25rem; /* rounded-r */
+    }
+    .entry .usage-instructions h3 {
+        margin-bottom: 0.25rem; /* mb-1 */
+    }
+    .entry .text-blue-600 {
+        color: #3182ce; /* text-blue-600 */
+    }
+    .entry .hover\:underline:hover {
+        text-decoration: underline;
+    }
+
+    /* Search specific styling */
+    .search-container {
+      margin-bottom: 1em;
+      display: flex;
+      flex-direction: column;
+    }
+    #dpa-search-input {
+      padding: 0.5em;
+      border: 1px solid #ccc;
+      border-radius: 0.25rem;
+      font-size: 1rem;
+      margin-bottom: 0.5em;
+    }
+    #dpa-search-results {
+      border: 1px solid #eee;
+      border-radius: 0.25rem;
+      max-height: 200px;
+      overflow-y: auto;
+      background-color: white;
+    }
+    .search-result-item {
+      padding: 0.5em;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+    .search-result-item:hover {
+      background-color: #f0f0f0;
+    }
+    .search-result-item:last-child {
+      border-bottom: none;
+    }
+    .nav button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+</style>
+</head>
+<body>
+  <h1>SB29 Guard Data Viewer</h1>
+  <nav class="nav">
+    <button id="prev">Previous</button>
+    <span id="position"></span>
+    <button id="next">Next</button>
+    <div class="search-container">
+      <input type="text" id="dpa-search-input" placeholder="Search DPA list by software name..." />
+      <div id="dpa-search-results"></div>
+    </div>
+  </nav>
+  <main id="data-container"></main>
+  <footer>
+    <ul>
+      <li><a id="form-url" href="#">Request a New DPA Review</a></li>
+      <li><a href="https://github.com/RiceC-at-MasonHS/SB29-guard-chrome">Extension code on GitHub</a></li>
+      <li><a href="https://ricec-at-masonhs.github.io/SB29-guard-chrome/">Privacy Policy</a></li>
+    </ul>
+  </footer>
+  <script src="viewer.js"></script>
+</body>
+</html>                                 

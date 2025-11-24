@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SB29 Guard Options</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    .form-group { margin-bottom: 1em; }
+    label { display: block; margin-bottom: 0.5em; }
+    input[type="url"] { width: 100%; }
+    button { padding: 0.5em 1em; }
+  </style>
+</head>
+<body>
+  <h1>SB29 Guard Options</h1>
+  <div class="form-group">
+    <label for="sheet-url">Google Sheet CSV URL</label>
+    <input type="url" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+  </div>
+  <div class="form-group">
+    <label for="form-url">Teacher Request Google Form URL</label>
+    <input type="url" id="form-url" placeholder="https://docs.google.com/forms/d/e/.../viewform">
+  </div>
+  <button id="save">Save</button>
+  <div id="status"></div>
+  <script src="options.js"></script>
+</body>
+</html>

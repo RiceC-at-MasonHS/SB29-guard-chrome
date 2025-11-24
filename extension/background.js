@@ -1,8 +1,3 @@
-// --- Constants and Configuration ---
-// This placeholder will be replaced by your build script
-const API_URL = '__API_URI_PLACEHOLDER__';
-// This placeholder will be replaced by your build script
-const API_KEY = '__API_KEY_PLACEHOLDER__';
 const USER_AGENT = '__USER_AGENT_PLACEHOLDER__';
 const CACHE_DURATION_MINUTES = 60 * 24; // Cache data for 24 hours
 
@@ -100,24 +95,49 @@ function getDomainInfo(urlString) {
 // --- Core API Fetching Logic ---
 
 /**
- * Fetches the complete DPA list from the Supabase API.
+ * Parses a CSV string into an array of objects.
+ * @param {string} csvText The CSV string to parse.
+ * @returns {Array<object>} An array of objects representing the CSV data.
+ */
+function parseCsv(csvText) {
+    const lines = csvText.split('\n');
+    const headers = lines[0].split(',').map(header => header.trim());
+    const records = [];
+    for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(value => value.trim());
+        if (values.length === headers.length) {
+            const record = {};
+            for (let j = 0; j < headers.length; j++) {
+                record[headers[j]] = values[j];
+            }
+            records.push(record);
+        }
+    }
+    return records;
+}
+
+/**
+ * Fetches the complete DPA list from the Google Sheet CSV URL.
  * @returns {Promise<Array|null>} A promise that resolves to the array of DPA data or null on error.
  */
 async function fetchDpaData() {
-    const headers = new Headers({
-        'accept-profile': 'public',
-        'apikey': API_KEY,
-        'User-Agent': 'SB29-Guard-Chrome-Extension'
-    });
+    const result = await chrome.storage.local.get(['sheetUrl']);
+    const sheetUrl = result.sheetUrl;
+
+    if (!sheetUrl) {
+        console.warn('Google Sheet URL is not configured. Please set it in the options page.');
+        return null;
+    }
 
     try {
-        const response = await fetch(API_URL, { method: 'GET', headers: headers });
+        const response = await fetch(sheetUrl);
         if (!response.ok) {
-            console.error(`API Error: ${response.status} ${response.statusText}`);
+            console.error(`Failed to fetch Google Sheet CSV: ${response.status} ${response.statusText}`);
             return null;
         }
-        const data = await response.json();
-        console.log('Successfully fetched and parsed DPA data.');
+        const csvText = await response.text();
+        const data = parseCsv(csvText);
+        console.log('Successfully fetched and parsed DPA data from Google Sheet.');
         return data;
     } catch (error) {
         console.error('Network or fetch error:', error);
@@ -206,7 +226,7 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
     }
 
     const tabDomainInfo = getDomainInfo(tab.url);
-    if (!tabDomainInfo) { // If the current tab's URL is invalid for some reason
+    if (!tabDomainInfo) { // If the current tab's URL is a
         updateIcon('neutral', tabId, false);
         return;
     }
@@ -296,6 +316,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
             sendResponse({ siteInfo, domainInfo });
         })();
 
-        return true; // Required to indicate you will send a response asynchronously
-    }
-});
+                return true; // Required to indicate you will send a response asynchronously
+
+            }
+    });
+}   

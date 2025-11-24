@@ -5,25 +5,18 @@ This document outlines the technical implementation details, feature set, and ro
 We will develop this project in two distinct phases to prioritize a fast, secure initial deployment followed by a more robust, long-term architecture.
 
 ### Version 1.0: Initial Private Release
-For the initial rollout within our district's managed Google Workspace, we will use a direct-to-API architecture.
+For the initial rollout within our district's managed Google Workspace, we will use a Google Sheets-driven architecture.
 
-- **How it Works:** The extension will fetch data directly from the Supabase API. The required API key will be included in the packaged extension code. Ideally this is a dedicated, read-only API Key that does not allow users to muddle with the data. 
+- **How it Works:** The extension will fetch data directly from a user-provided authoritative Google Sheet.
 
-- **API Key Security:** To keep the key out of the public GitHub repository, it will be handled via a build-time injection. The key will be stored in a local, git-ignored file (e.g., `config.js`). A simple build script will read this key and insert it into the final JavaScript file before the extension is packaged for upload. This is a safe and acceptable tradeoff for a private, force-installed extension. Doubly so if the API Key is guarded to be read-only. 
+- **Google Sheet as Source of Truth:** Users will input the URL of their school's authoritative Google Sheet in the extension's options page. This Google Sheet will serve as the fundamental source of truth for all relevant data, eliminating the need for a separate API key or proxy service for data retrieval. School administrators will be required to adhere to a predefined column structure in their Google Sheet.
 
-### Version 2.0: Enhanced Security & Scalability -- Optional Advancement
-For long-term stability and security, we will introduce a secure proxy model.
 
-- **How it Works:** The extension will call a trusted intermediary endpoint hosted by the school. This proxy will be the only service that holds the Supabase API key. It will also be able to minimize the data that is transmitted to end-users devices. 
-
-- **Technology:** The proxy will be a lightweight, high-performance binary (written in Go) hosted on a school subdomain. This completely decouples the extension from the secret key, making the system more robust and scalable.
-
-- **Centralized Configuration:** The proxy will not only serve DPA data but also provide configuration details, such as the base URL for the "View Full Details" link in the popup. This allows us to update key settings centrally without having to republish the extension.
 
 ## ✅ Feature Set: MVP (Version 1.0)
 Our first launch-ready version must do the following:
 
-- **Direct API Fetch:** The background script must successfully fetch and parse data from the Supabase API endpoint.
+- **Data Fetching:** The background script must successfully fetch and parse data from the user-provided Google Sheet URL.
 
 - **Background URL Monitoring:** The `background.js` script must successfully listen for tab updates and extract the hostname from the current URL.
 
@@ -63,7 +56,7 @@ Our first launch-ready version must do the following:
 
 - **Build Tooling (V1):** A simple build script (e.g., a shell script or a Node.js file) to manage the API key injection and package the extension into a `.zip` file.
 
-- **Proxy Service (V2):** Go.
+
 
 - **APIs:** Chrome Extension APIs (`Manifest V3`, `chrome.storage`, `chrome.tabs`, `chrome.action`).
 
@@ -71,7 +64,7 @@ Our first launch-ready version must do the following:
 
 - `/extension`: All source code for the extension.
 
-- `/proxy-go` (for V2): The code for our secure Go proxy service.
+
 
 - `/docs`: Public-facing static files, primarily the `index.html` which serves as our Privacy Policy.
 
@@ -83,11 +76,7 @@ Version 1.0 is "done" when a teacher can navigate to a website, see the extensio
 
 For future iterations, particularly when adapting this extension for other schools, consider the following enhancements:
 
-- **Google Sheets as Data Source:**
-  - **Concept:** Allow schools to use a published Google Sheet as the source of truth for the extension's data. This eliminates the need for a proxy service (Version 2.0) because published Google Sheets are inherently secure and read-only.
-  - **Implementation:**
-    - Require school administrators to adhere to a predefined column structure in their Google Sheet.
-    - Implement an [options page](https://developer.chrome.com/docs/extensions/develop/ui/options-page) where users can input the URL of their school's Google Sheet.
+
 - **Enhanced Information Display:**
   - **Concept:**  Provide more detailed information about each resource than can fit in the popup.
   - **Implementation:**

@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 
 // --- Configuration ---
-const configPath = './config.js';
 const sourceDir = 'extension'; // Assumes your source files are in /extension
 const buildDir = 'build';
 
@@ -17,24 +16,11 @@ const packageJson = readJsonFile('./package.json');
 async function build() {
     console.log('🚀 Starting extension build process...');
 
-    // 1. Load secrets from config.js
-    if (!fs.existsSync(configPath)) {
-        console.error(`🔴 Error: Configuration file not found at ${configPath}`);
-        process.exit(1);
-    }
-    const config = await import(configPath);
-    const { API_KEY, API_URI, API_HOST } = config.default;
-
-    if (!API_KEY || !API_URI || !API_HOST) {
-        console.error('🔴 Error: Required API values are missing from config.js.');
-        process.exit(1);
-    }
-
-    // 2. Prepare build directory
+    // 1. Prepare build directory
     if (fs.existsSync(buildDir)) fs.rmSync(buildDir, { recursive: true, force: true });
     fs.mkdirSync(buildDir, { recursive: true });
 
-    // 3. Process and create the final manifest.json
+    // 2. Process and create the final manifest.json
     console.log('   - Building manifest.json...');
     const manifestTemplatePath = path.join(sourceDir, 'manifest.template.json');
     if (!fs.existsSync(manifestTemplatePath)) {
@@ -54,15 +40,11 @@ async function build() {
     manifestContent = manifestContent.replace(/<% name %>/g, packageJson.displayName);
     manifestContent = manifestContent.replace(/<% version %>/g, packageJson.version);
     manifestContent = manifestContent.replace(/<% description %>/g, packageJson.description);
-
-    // Replace secrets from config.js
-    const manifestHostPattern = `${API_HOST}/*`;
-    manifestContent = manifestContent.replace(/__API_HOST_PLACEHOLDER__/g, manifestHostPattern);
     
     // --- Write the processed manifest to the build directory ---
     fs.writeFileSync(path.join(buildDir, 'manifest.json'), manifestContent);
 
-    // 4. Copy all other files and replace placeholders where needed
+    // 3. Copy all other files and replace placeholders where needed
     console.log('   - Processing and copying source files...');
     const allFiles = fs.readdirSync(sourceDir, { withFileTypes: true });
     
@@ -85,8 +67,6 @@ async function build() {
         
         if (file.name === 'background.js') {
             let content = fs.readFileSync(sourcePath, 'utf8');
-            content = content.replace(/__API_KEY_PLACEHOLDER__/g, API_KEY);
-            content = content.replace(/__API_URI_PLACEHOLDER__/g, API_URI);
             content = content.replace(/__USER_AGENT_PLACEHOLDER__/g, userAgentString);
             fs.writeFileSync(destPath, content);
         } else {
