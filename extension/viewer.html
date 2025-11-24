@@ -89,6 +89,13 @@
     .entry-header {
         padding: 1rem;
         color: white;
+        display: flex; /* Flexbox for layout */
+        justify-content: space-between; /* Space between text and icon */
+        align-items: center;
+    }
+    .header-text {
+        flex: 1; /* Take up remaining space */
+        padding-right: 10px;
     }
     .entry-header h3 {
         margin: 0;
@@ -98,6 +105,14 @@
         margin: 5px 0 0 0;
         font-size: 0.9rem;
         opacity: 0.9;
+    }
+    .header-icon {
+        width: 48px;
+        height: 48px;
+        background-color: rgba(255, 255, 255, 0.2); /* Subtle backdrop */
+        border-radius: 5%;
+        padding: 4px;
+        flex-shrink: 0; /* Prevent squishing */
     }
     .entry-content {
         padding: 1.5rem;
