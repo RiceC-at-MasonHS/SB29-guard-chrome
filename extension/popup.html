@@ -44,6 +44,7 @@
             margin-top: 12px;
             font-size: 14px;
             transition: background-color 0.2s;
+            cursor: pointer; /* Ensure pointer cursor for button-like links */
         }
         .button:hover {
             background-color: #0056b3;
@@ -54,6 +55,13 @@
         }
         .button.purple:hover {
             background-color: #59359a;
+        }
+        /* Grey button for configuration */
+        .button.secondary {
+            background-color: #6c757d;
+        }
+        .button.secondary:hover {
+            background-color: #5a6268;
         }
         #disclaimer {
             font-size: 10px;
@@ -89,6 +97,9 @@
             
             <!-- Added 'purple' class to this button -->
             <a href="#" id="request-form-link" class="button purple" target="_blank" rel="noopener noreferrer" style="display: none;">Request DPA Review</a>
+
+            <!-- New Configuration Link -->
+            <a href="#" id="options-link" class="button secondary" style="display: none;">Configure Extension</a>
             
             <p id="disclaimer">Don’t share <a href="https://csrc.nist.gov/glossary/term/PII" target="_blank">PII</a> or violate <a href="https://studentprivacy.ed.gov/ferpa" target="_blank">FERPA</a> | <a href="https://github.com/RiceC-at-MasonHS/SB29-guard-chrome" target="_blank">GitHub</a></p>
         </div>

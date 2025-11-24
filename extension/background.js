@@ -149,12 +149,12 @@ function parseCsv(csvText) {
 
 /**
  * Determines the icon path based on DPA and T&L status.
+ * Updated to align with icon-strategy.yaml
  */
 function getIconPath(tlStatus, dpaStatus) {
     const tl = (tlStatus || '').trim();
     let dpa = (dpaStatus || '').trim();
-    if (dpa === 'Recieved') dpa = 'Received';
-
+    if (dpa === 'Recieved') dpa = 'Received'; // fixes spelling, just in case...
     if (tl === 'Approved' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
     if (tl === 'Not Required' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
     if (dpa === 'Denied') return 'images/icon-yellow-triangle.png';
@@ -162,6 +162,49 @@ function getIconPath(tlStatus, dpaStatus) {
     if (dpa === 'Requested') return 'images/icon-orange-square.png';
     
     return 'images/icon-neutral48.png';
+}
+
+/**
+ * Helper function to update the icon for a specific tab.
+ */
+async function updateIcon(tabId, url) {
+    const domainInfo = getDomainInfo(url);
+    if (!domainInfo) return;
+
+    const dpaList = await getAndUpdateDpaList();
+    if (!dpaList) return; 
+
+    let siteInfo = null;
+    
+    if (domainInfo.isAppStore && domainInfo.appID) {
+        siteInfo = dpaList.find(site => {
+            const siteDomainInfo = getDomainInfo(site.resource_link);
+            return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
+        });
+    } else {
+        siteInfo = dpaList.find(site => {
+            let targetHostname = site.hostname;
+            if (!targetHostname && site.resource_link) {
+                const extracted = getDomainInfo(site.resource_link);
+                if (extracted) targetHostname = extracted.hostname;
+            }
+
+            if (!targetHostname) return false;
+            targetHostname = targetHostname.toLowerCase().trim();
+
+            return domainInfo.hostname === targetHostname || 
+                   domainInfo.hostname.endsWith('.' + targetHostname);
+        });
+    }
+
+    // Determine the icon:
+    // 1. If site found, use status logic (Green, Red, Orange, or Yellow)
+    // 2. If site NOT found (unmatched), use Purple Diamond (Request Review)
+    const iconPath = siteInfo 
+        ? getIconPath(siteInfo.current_tl_status, siteInfo.current_dpa_status)
+        : 'images/icon-purple-diamond.png'; 
+
+    chrome.action.setIcon({ path: iconPath, tabId: tabId });
 }
 
 // --- Event Listeners ---
@@ -176,49 +219,10 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.alarms.create('updateDpaList', { periodInMinutes: 60 });
 });
 
+// Tab Update Listener
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
-        const domainInfo = getDomainInfo(tab.url);
-        if (!domainInfo) return;
-
-        const dpaList = await getAndUpdateDpaList();
-        if (!dpaList) return;
-
-        let siteInfo = null;
-        
-        if (domainInfo.isAppStore && domainInfo.appID) {
-            siteInfo = dpaList.find(site => {
-                const siteDomainInfo = getDomainInfo(site.resource_link);
-                return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
-            });
-        } else {
-            // Updated matching logic: Checks explicit hostname column first
-            siteInfo = dpaList.find(site => {
-                // 1. Try explicit hostname column
-                let targetHostname = site.hostname;
-
-                // 2. Fallback to extracting from resource_link
-                if (!targetHostname && site.resource_link) {
-                    const extracted = getDomainInfo(site.resource_link);
-                    if (extracted) targetHostname = extracted.hostname;
-                }
-
-                if (!targetHostname) return false;
-
-                // Normalize
-                targetHostname = targetHostname.toLowerCase().trim();
-
-                // Match: Exact or Subdomain (e.g., canvas.instructure.com ends with instructure.com)
-                return domainInfo.hostname === targetHostname || 
-                       domainInfo.hostname.endsWith('.' + targetHostname);
-            });
-        }
-
-        const iconPath = siteInfo 
-            ? getIconPath(siteInfo.current_tl_status, siteInfo.current_dpa_status)
-            : 'images/icon-neutral48.png';
-
-        chrome.action.setIcon({ path: iconPath, tabId: tabId });
+        await updateIcon(tabId, tab.url);
     }
 });
 
@@ -246,7 +250,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         return siteDomainInfo && siteDomainInfo.appID === domainInfo.appID;
                     });
                 } else {
-                    // Same updated matching logic for Popup
                     siteInfo = dpaList.find(site => {
                         let targetHostname = site.hostname;
                         if (!targetHostname && site.resource_link) {

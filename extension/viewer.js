@@ -13,7 +13,10 @@ function getIconPath(tlStatus, dpaStatus) {
 
     if (tl === 'Approved' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
     if (tl === 'Not Required' && (dpa === 'Received' || dpa === 'Not Required')) return 'images/icon-green-circle.png';
+    
+    // FIX: Mapped Denied back to Yellow Triangle (Staff Only)
     if (dpa === 'Denied') return 'images/icon-yellow-triangle.png';
+    
     if (tl === 'Rejected') return 'images/icon-red-x.png';
     if (dpa === 'Requested') return 'images/icon-orange-square.png';
     
@@ -30,9 +33,11 @@ function getStatusColor(iconPath) {
         case 'images/icon-red-x.png':
             return '#c62828'; // Red
         case 'images/icon-yellow-triangle.png':
-            return '#f9a825'; // Dark Yellow/Amber (readable on white)
+            return '#f9a825'; // Dark Yellow/Amber (matches yellow triangle)
         case 'images/icon-orange-square.png':
             return '#ef6c00'; // Orange
+        case 'images/icon-purple-diamond.png':
+            return '#6f42c1'; // Purple (Matches button theme - for unlisted items)
         default:
             return '#607d8b'; // Blue Grey (Neutral)
     }
@@ -77,7 +82,7 @@ function renderEntry() {
         <span class="field-value">${entry.current_dpa_status || '-'}</span>
 
         <span class="field-label">Description</span>
-        <span class="field-value">${entry.purpose || 'No description provided.'}</span>
+        <span class="field-value">${entry.software_description || 'No description provided.'}</span>
         
         <span class="field-label">Resource Type</span>
         <span class="field-value">${entry.resource_type || '-'}</span>
