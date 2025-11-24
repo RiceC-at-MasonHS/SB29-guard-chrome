@@ -1,0 +1,10 @@
+id,software_name,vendor_name,hostname,resource_link,current_tl_status,current_dpa_status,purpose,resource_type,privacy_policy_link
+1,Canvas LMS,Instructure,instructure.com,https://canvas.instructure.com,Approved,Received,Primary Learning Management System for the district.,Instructional Tool,https://www.instructure.com/policies/privacy
+2,Khan Academy,Khan Academy,khanacademy.org,https://www.khanacademy.org,Approved,Received,Free online courses lessons and practice.,Instructional Tool,https://www.khanacademy.org/about/privacy-policy
+3,Cool Math Games,Coolmath,coolmathgames.com,https://www.coolmathgames.com,Rejected,Denied,Game site with unverified data practices.,Other,https://www.coolmathgames.com/privacypolicy
+4,Mystery Science,Discovery Education,mysteryscience.com,https://mysteryscience.com,Approved,Received,K-5 science curriculum.,Instructional Tool,https://mysteryscience.com/privacy
+5,New AI Tool,Startup Inc,new-ai-writer.io,https://new-ai-writer.io,Pending,Requested,New generative AI writing assistant under review.,Staff/Teacher Resource,https://new-ai-writer.io/privacy
+6,Google Classroom,Google,classroom.google.com,https://classroom.google.com,Approved,Received,Classroom workflow management.,Communication Platform,https://policies.google.com/privacy
+7,Desmos Graphing Calculator,Desmos,desmos.com,https://www.desmos.com,Approved,Not Required,Online graphing calculator.,Assessment,https://www.desmos.com/privacy
+8,Unapproved Game,Sketchy Devs,sketchy-game-site.net,https://sketchy-game-site.net,Rejected,Denied,Contains excessive ads and tracking.,Other,
+9,District Google App,Google,workspace.google.com,https://workspace.google.com/marketplace/app/some_app/123456789,Approved,Received,Specific Google Workspace Marketplace App.,Productivity,
