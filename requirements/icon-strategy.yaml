@@ -15,7 +15,7 @@ case:
   - approved:
       path: "images/icon-green-circle.png"
       state-combos:
-        - ["Approved", "Recieved", "url_known"]
+        - ["Approved", "Received", "url_known"]
         - ["Approved", "Not Required", "url_known"]
         - ["Not Required", "Received", "url_known"]
         - ["Not Required", "Not Required", "url_known"]
